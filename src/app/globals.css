@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* Brand tokens — mirror the "Pumpfitness Equipment Asia" design system (Iron Red direction). */
+@theme {
+  --color-brand: #e5121b;
+  --color-brand-dark: #c40f17;
+  --color-night: #0e0d0c;
+  --color-night-2: #151311;
+  --color-night-line: #2a2724;
+  --color-ink: #16130f;
+  --color-ink-2: #3d3833;
+  --color-muted: #5f5850;
+  --color-muted-night: #a39c93;
+  --color-stage: #f2f1ee;
+  --color-line: #ebe8e3;
+  --color-control: #8a837a;
+  --color-ready: #2fbf63;
+  --color-preorder: #3b7be0;
+  --color-import: #d99a1e;
+  --color-out: #8a837a;
+  --color-pending-bg: #f8efd9;
+  --color-pending: #8a5a00;
+
+  --font-display: var(--font-kanit), "Noto Sans SC", "PingFang SC", sans-serif;
+  --font-sans: var(--font-plex-thai), "Noto Sans Thai", "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #fff;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+}
+
+:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1f5aa6;
+}
+
+@utility wrap {
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding-inline: 16px;
+  @media (width >= 40rem) {
+    padding-inline: 40px;
+  }
+}
+
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Stroke follows the text colour (set it with text-*); only the fill is cleared. */
+.hollow,
+.hollow-thin {
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke-color: currentColor;
+  -webkit-text-stroke-width: 2px;
+}
+.hollow-thin {
+  -webkit-text-stroke-width: 1.5px;
+}
+
+/* Product photos come on white backgrounds; multiply blends them into the stage colour. */
+@utility blend-stage {
+  mix-blend-mode: multiply;
+}
+
+/* "NEW" badge: slanted tag with offset shadow and a periodic shine. */
+.badge-new {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 13px 5px 10px;
+  background: var(--color-brand);
+  color: #fff;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  transform: skewX(-12deg);
+  box-shadow: 3px 3px 0 var(--color-night);
+  overflow: hidden;
+}
+.badge-new::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: badge-shine 2.8s ease-in-out infinite;
+}
+@keyframes badge-shine {
+  0% { left: -60%; }
+  55%, 100% { left: 130%; }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 38s linear infinite;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .marquee-track { animation: none; }
+  .badge-new::after { display: none; }
+  *, *::before, *::after { transition-duration: 0s !important; }
+}
