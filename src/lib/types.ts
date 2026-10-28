@@ -1,5 +1,5 @@
-// Conceptual data contract for the storefront. Field names map 1:1 to the draft
-// Supabase schema in supabase/schema.sql (snake_case there, camelCase here).
+// Conceptual data contract for the storefront. Field names map 1:1 to the
+// products_public view in the backend repo's Supabase schema (snake_case there, camelCase here).
 
 export type StockStatus = "ready" | "preorder" | "import" | "out";
 

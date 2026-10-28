@@ -40,17 +40,21 @@ npm run build
 - `src/lib/pricing.ts` — price modes; unknown prices are never shown as ฿0
 - `src/lib/shop-store.ts` — quote basket, cart and currency kept in localStorage
 - `src/lib/site.ts` — contact channels and showroom placeholders (`[...]` = owner must supply)
-- `supabase/schema.sql` — draft database schema, not final
 
 ## The NEW badge
 
-`product.isNew` drives it. In the draft schema, `products_public.is_new` is true when
+`product.isNew` drives it. In the database (backend repo), `products_public.is_new` is true when
 `arrived_at` is within 45 days, unless staff set `new_override`. It is hidden on
 out-of-stock items.
 
 ## Connecting Supabase (next step)
 
-1. `npm install @supabase/supabase-js` and set `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`.
-2. Apply `supabase/schema.sql` (after review) and upload product photos to Storage.
-3. Replace the bodies in `src/lib/catalog.ts` with queries on `products_public`.
-4. Replace the simulated submit in `src/app/(site)/quote/quote-client.tsx` with a server action that inserts `quote_requests` + `quote_items`.
+The database schema, security rules and form functions live in the
+[backend repo](https://github.com/Mzknkung53/FitnessEquipmentASIA-Backend)
+(`supabase/migrations/`, design notes in `docs/database-design.md`).
+
+1. Apply the backend migrations to the Supabase project and upload product photos to the `product-media` bucket.
+2. Replace the bodies in `src/lib/catalog.ts` with reads of the `products_public` view (variants are embedded).
+3. Replace the simulated submits (quote, checkout, service request) with calls to the backend API, which calls
+   `submit_quote_request`, `place_order` and `submit_service_request`. These are not callable with the publishable key.
+4. Read the USD rate from `current_exchange_rates` instead of `DEMO_THB_PER_USD`.

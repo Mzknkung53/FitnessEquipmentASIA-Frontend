@@ -6,8 +6,8 @@ import type { Category, Product } from "@/lib/types";
 // sample data for Supabase means changing this file only, e.g.:
 //
 //   const { data } = await supabase
-//     .from("products_public")        // view: published products + variants
-//     .select("*, variants(*)")
+//     .from("products_public")        // view: published products, variants embedded as JSON
+//     .select("*")
 //     .order("curated_rank");
 //
 // Keep the return shapes identical to the types in src/lib/types.ts.
