@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import { authConfigured } from "@/lib/supabase/env";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -12,6 +13,8 @@ export type AuthProfile = {
 
 /** Current session + synced customer/staff profile (null if signed out). */
 export async function getAuthProfile(): Promise<AuthProfile | null> {
+  // Request-time only: session cookies / Supabase client may touch Date.now().
+  await connection();
   if (!authConfigured) return null;
   const supabase = await createServerSupabase();
   const {

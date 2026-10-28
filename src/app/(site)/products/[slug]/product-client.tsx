@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Icon } from "@/components/icons";
+import { Icon, PlayIcon } from "@/components/icons";
 import { NewBadge, Pictogram } from "@/components/product-bits";
 import { QtyStepper } from "@/components/qty-stepper";
 import { canBuy, formatMoney, priceLabel, productPrice } from "@/lib/pricing";
@@ -12,46 +12,48 @@ import { shop, useShop } from "@/lib/shop-store";
 import { showroom } from "@/lib/site";
 import type { Product, StockStatus } from "@/lib/types";
 
-const views = [
-  { label: "มุมหน้า", zoom: 1, origin: "50% 50%" },
-  { label: "เบาะและพนักพิง", zoom: 2.1, origin: "50% 45%" },
-  { label: "ด้ามจับ", zoom: 2.4, origin: "22% 50%" },
-  { label: "ฐานเครื่อง", zoom: 2.2, origin: "50% 95%" },
-];
-
 export function ProductGallery({ product }: { product: Product }) {
+  const gallery = product.gallery.length > 0 ? product.gallery : product.image ? [product.image] : [];
   const [view, setView] = useState(0);
-  const v = views[view];
+  const img = gallery[view] ?? gallery[0];
 
-  if (!product.image) {
+  if (!img) {
     return (
       <div className="relative grid aspect-square place-items-center rounded-[18px] bg-stage">
         {product.pictogram ? <Pictogram kind={product.pictogram} className="h-1/2 w-1/2 text-control" /> : <span className="text-muted">ยังไม่มีรูปสินค้า</span>}
-        <span className="absolute top-4 left-4 rounded border border-dashed border-control bg-white px-2 py-0.5 text-xs font-semibold text-muted">ภาพประกอบ · รอรูปจริง</span>
+        <span className="absolute top-4 left-4 rounded border border-dashed border-control bg-white px-2 py-0.5 text-xs font-semibold text-muted">รอรูปจริง</span>
       </div>
     );
   }
 
-  const img = product.image;
   return (
     <section aria-label="รูปสินค้า" className="flex flex-col gap-3.5 lg:sticky lg:top-[108px]">
       <div className="relative grid aspect-square place-items-center overflow-hidden rounded-[18px] bg-stage">
-        <Image src={img.src} alt={img.alt} width={img.width} height={img.height} loading="eager" fetchPriority="high" sizes="(min-width: 1024px) 680px, 100vw" style={{ transform: `scale(${v.zoom})`, transformOrigin: v.origin }} className="blend-stage h-[88%] w-[88%] object-contain transition-transform duration-300" />
+        <Image src={img.src} alt={img.alt} width={img.width} height={img.height} loading="eager" fetchPriority="high" sizes="(min-width: 1024px) 680px, 100vw" className="blend-stage h-[88%] w-[88%] object-contain" />
         <span className="absolute top-4 left-4 rounded-full bg-white px-2.5 py-1 text-xs font-semibold">
           {product.demo ? "รูปทดสอบ · " : ""}
-          {v.label}
+          {img.alt || `มุมที่ ${view + 1}`}
         </span>
-        <span className="absolute right-4 bottom-4 inline-flex items-center gap-1.5 rounded-full bg-night px-3 py-1.5 text-[13px] text-white">
-          <Icon name="qr" size={16} /> สแกน QR ที่เครื่องในโชว์รูม
-        </span>
+        {product.videoUrl && (
+          <a
+            href={product.videoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute right-4 bottom-4 inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-[13px] font-semibold text-white"
+          >
+            <PlayIcon size={14} /> ดูวิดีโอ
+          </a>
+        )}
       </div>
-      <div className="grid grid-cols-4 gap-3">
-        {views.map((t, i) => (
-          <button key={t.label} type="button" onClick={() => setView(i)} aria-label={t.label} aria-pressed={view === i} className={`grid aspect-square place-items-center overflow-hidden rounded-[10px] bg-stage ${view === i ? "ring-2 ring-ink" : ""}`}>
-            <Image src={img.src} alt="" width={img.width} height={img.height} sizes="160px" style={{ transform: `scale(${t.zoom})`, transformOrigin: t.origin }} className="blend-stage h-full w-full object-contain" />
-          </button>
-        ))}
-      </div>
+      {gallery.length > 1 && (
+        <div className="grid grid-cols-4 gap-3">
+          {gallery.map((shot, i) => (
+            <button key={`${shot.src}-${i}`} type="button" onClick={() => setView(i)} aria-label={shot.alt || `มุมที่ ${i + 1}`} aria-pressed={view === i} className={`grid aspect-square place-items-center overflow-hidden rounded-[10px] bg-stage ${view === i ? "ring-2 ring-ink" : ""}`}>
+              <Image src={shot.src} alt="" width={shot.width} height={shot.height} sizes="160px" className="blend-stage h-full w-full object-contain" />
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

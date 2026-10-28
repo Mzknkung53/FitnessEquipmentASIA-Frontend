@@ -9,8 +9,8 @@ const nextConfig: NextConfig = {
     remotePatterns: supabaseUrl ? [new URL(`${supabaseUrl}/storage/v1/object/public/product-media/**`)] : [],
   },
   experimental: {
-    // Quote / repair forms can attach one file of up to 20 MB (checked again in the action).
-    serverActions: { bodySizeLimit: "21mb" },
+    // Quote / repair forms + staff product photos (several images per save).
+    serverActions: { bodySizeLimit: "50mb" },
   },
   partialPrefetching: true,
   turbopack: {

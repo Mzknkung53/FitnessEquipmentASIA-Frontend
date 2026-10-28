@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { getAuthProfile } from "@/lib/auth";
 import { authConfigured } from "@/lib/supabase/env";
@@ -9,7 +10,19 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function StaffLoginPage({
+export default function StaffLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  return (
+    <Suspense fallback={<div className="grid min-h-dvh place-items-center text-muted-night">กำลังโหลด…</div>}>
+      <StaffLogin searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function StaffLogin({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
@@ -17,9 +30,6 @@ export default async function StaffLoginPage({
   const params = await searchParams;
   const profile = await getAuthProfile();
   if (profile?.isStaff) redirect("/staff");
-  if (profile && !profile.isStaff) {
-    // Signed in as a customer who is not on the staff allowlist.
-  }
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-6 py-16">
@@ -27,9 +37,13 @@ export default async function StaffLoginPage({
         <p className="eyebrow text-brand">Staff</p>
         <h1 className="font-display text-4xl font-bold tracking-[-0.02em]">เข้าสู่ระบบพนักงาน</h1>
         <p className="text-[15px] text-muted-night">
-          ใช้ Google ของบัญชีที่ได้รับสิทธิ์แล้วเท่านั้น (เช่น admin) — ลูกค้าทั่วไปใช้{" "}
+          ใช้ Google ของบัญชีที่ได้รับสิทธิ์แล้วเท่านั้น (เช่น admin) —{" "}
+          <Link href="/" className="text-white underline-offset-2 hover:underline">
+            กลับหน้าร้านลูกค้า
+          </Link>
+          {" · "}
           <Link href="/login" className="text-white underline-offset-2 hover:underline">
-            /login
+            login ลูกค้า
           </Link>
         </p>
       </div>

@@ -1,11 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getAuthProfile } from "@/lib/auth";
 
 export const metadata = { title: "บัญชีของฉัน" };
 
-export default async function AccountPage() {
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="wrap py-24 text-muted">กำลังโหลดบัญชี…</div>}>
+      <AccountContent />
+    </Suspense>
+  );
+}
+
+async function AccountContent() {
   const profile = await getAuthProfile();
   if (!profile) redirect("/login?next=/account");
 

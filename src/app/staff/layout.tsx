@@ -5,8 +5,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export const dynamic = "force-dynamic";
-
 // Staff workspace is separate from the public storefront (no public header/footer).
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   return <div className="min-h-dvh bg-[#0b0a09] text-white">{children}</div>;

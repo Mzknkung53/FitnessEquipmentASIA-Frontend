@@ -67,6 +67,10 @@ export type Product = {
   /** Lower = shown first in "ทีมงานแนะนำ". */
   curatedRank: number;
   image?: ProductImage;
+  /** Extra photos (all angles). First item matches `image` when present. */
+  gallery: ProductImage[];
+  /** External product video (YouTube / Vimeo / direct URL). */
+  videoUrl?: string;
   pictogram?: PictogramKind;
   variants: Variant[];
   specs: Spec[];

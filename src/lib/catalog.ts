@@ -25,10 +25,33 @@ type ProductRow = {
   image_width: number | null;
   image_height: number | null;
   image_alt: string | null;
+  media?: {
+    kind: "image" | "manual" | "video";
+    storage_path: string | null;
+    external_url: string | null;
+    width: number | null;
+    height: number | null;
+    alt: string | null;
+  }[];
   variants: { sku: string; label: string; swatch: string | null; status: StockStatus; price_thb: number | null; lead_time: string | null }[];
 };
 
 function toProduct(row: ProductRow): Product {
+  const gallery = (row.media ?? [])
+    .filter((m) => m.kind === "image" && m.storage_path && m.width && m.height)
+    .map((m) => ({
+      src: productMediaUrl(m.storage_path!),
+      width: m.width!,
+      height: m.height!,
+      alt: m.alt ?? row.name_th,
+    }));
+  const image =
+    gallery[0] ??
+    (row.image_path && row.image_width && row.image_height
+      ? { src: productMediaUrl(row.image_path), width: row.image_width, height: row.image_height, alt: row.image_alt ?? row.name_th }
+      : undefined);
+  const videoUrl = (row.media ?? []).find((m) => m.kind === "video" && m.external_url)?.external_url ?? undefined;
+
   return {
     slug: row.slug,
     model: row.model,
@@ -39,10 +62,9 @@ function toProduct(row: ProductRow): Product {
     setting: row.setting,
     isNew: row.is_new,
     curatedRank: row.curated_rank ?? Number.MAX_SAFE_INTEGER,
-    image:
-      row.image_path && row.image_width && row.image_height
-        ? { src: productMediaUrl(row.image_path), width: row.image_width, height: row.image_height, alt: row.image_alt ?? row.name_th }
-        : undefined,
+    image,
+    gallery: gallery.length > 0 ? gallery : image ? [image] : [],
+    videoUrl: videoUrl ?? undefined,
     pictogram: (row.pictogram ?? undefined) as PictogramKind | undefined,
     variants: row.variants.map((v) => ({
       sku: v.sku,
