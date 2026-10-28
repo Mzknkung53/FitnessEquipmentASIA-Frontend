@@ -28,7 +28,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="wrap flex flex-wrap justify-between gap-3 border-t border-[#23201d] pt-5 pb-7 text-[13px] text-muted-night">
-        <span>© Fitness Equipment Asia · ต้นแบบ — สินค้าและราคาเป็นข้อมูลตัวอย่าง</span>
+        <span>© Fitness Equipment Asia</span>
         <span className="flex gap-4">
           <Link href="/showroom#faq" className="hover:text-white">ความเป็นส่วนตัว</Link>
           <Link href="/showroom#faq" className="hover:text-white">ข้อกำหนด</Link>

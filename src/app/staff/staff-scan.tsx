@@ -27,16 +27,11 @@ type LogEntry = { at: string; what: string; detail: string; by: string };
 
 export function StaffScan({ units: initial, skuCounts, products }: { units: StockUnit[]; skuCounts: Record<string, Record<StockUnitState, number>>; products: Product[] }) {
   const [units, setUnits] = useState(initial);
-  const [query, setQuery] = useState(initial[0].unitCode);
-  const [code, setCode] = useState(initial[0].unitCode);
+  const [query, setQuery] = useState(initial[0]?.unitCode ?? "");
+  const [code, setCode] = useState(initial[0]?.unitCode ?? "");
   const [pending, setPending] = useState<Action | null>(null);
   const [note, setNote] = useState("");
-  const [log, setLog] = useState<Record<string, LogEntry[]>>({
-    "U-000184": [
-      { at: "12 ต.ค. 10:05", what: "ย้ายตำแหน่ง", detail: "พื้นที่รับของ → คลัง A · แถว 2 · ช่อง 14", by: "[พนักงาน A]" },
-      { at: "12 ต.ค. 09:40", what: "รับเข้า", detail: "จากล็อตผลิต [เลขล็อต] · สภาพใหม่", by: "[พนักงาน A]" },
-    ],
-  });
+  const [log, setLog] = useState<Record<string, LogEntry[]>>({});
 
   const unit = units.find((u) => u.unitCode === code);
   const product = unit && products.find((p) => p.variants.some((v) => v.sku === unit.sku));
@@ -65,9 +60,7 @@ export function StaffScan({ units: initial, skuCounts, products }: { units: Stoc
         <h1 className="font-display text-[52px] leading-none font-bold tracking-[-0.02em]">
           สแกน<span className="hollow-thin text-white">เครื่อง</span>
         </h1>
-        <span className="text-sm text-muted-night">
-          การสแกนเปิดข้อมูลเท่านั้น ไม่ตัดหรือเปลี่ยนสต็อกเอง · <span className="rounded border border-dashed border-[#5a544d] px-1.5">ข้อมูลตัวอย่าง</span>
-        </span>
+        <span className="text-sm text-muted-night">การสแกนเปิดข้อมูลเท่านั้น ไม่ตัดหรือเปลี่ยนสต็อกเอง</span>
       </div>
 
       <form role="search" onSubmit={lookup} className="flex flex-wrap gap-2.5">
@@ -82,8 +75,10 @@ export function StaffScan({ units: initial, skuCounts, products }: { units: Stoc
         </button>
       </form>
 
-      {!unit || !product || !variant ? (
-        <div className="rounded-2xl border border-[#26231f] bg-night-2 p-8 text-muted-night">ไม่พบรหัสเครื่อง “{code}” · ลอง U-000184, U-000185 หรือ U-000201</div>
+      {units.length === 0 ? (
+        <div className="rounded-2xl border border-[#26231f] bg-night-2 p-8 text-muted-night">ยังไม่มีเครื่องในระบบ — เพิ่มสต็อกในฐานข้อมูลก่อน แล้วค่อยสแกนที่นี่</div>
+      ) : !unit || !product || !variant ? (
+        <div className="rounded-2xl border border-[#26231f] bg-night-2 p-8 text-muted-night">ไม่พบรหัสเครื่อง “{code || "—"}”</div>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2.5 text-sm">

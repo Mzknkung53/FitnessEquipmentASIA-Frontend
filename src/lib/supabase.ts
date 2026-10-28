@@ -6,10 +6,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // submit_* functions (see the backend repo's supabase/migrations).
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 const secretKey = process.env.SUPABASE_SECRET_KEY;
 
-/** false until .env.local is filled in; the catalog then falls back to sample data. */
+/** false until .env.local is filled in; catalog reads return empty until configured. */
 export const supabaseConfigured = Boolean(url && publishableKey && secretKey);
 
 const options = { auth: { persistSession: false, autoRefreshToken: false } };

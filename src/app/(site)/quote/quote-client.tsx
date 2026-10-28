@@ -23,12 +23,20 @@ const methods: { id: ContactMethod; label: string; field: string }[] = [
 
 const input = "min-h-[52px] w-full rounded-lg border border-control bg-white px-3.5 text-base font-normal";
 
-export function QuoteClient({ products }: { products: Product[] }) {
+export function QuoteClient({
+  products,
+  accountEmail = null,
+  accountName = null,
+}: {
+  products: Product[];
+  accountEmail?: string | null;
+  accountName?: string | null;
+}) {
   const { quote, currency, ready } = useShop();
   const params = useSearchParams();
-  const [method, setMethod] = useState<ContactMethod>("line");
-  const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
+  const [method, setMethod] = useState<ContactMethod>(accountEmail ? "email" : "line");
+  const [name, setName] = useState(accountName ?? "");
+  const [contact, setContact] = useState(accountEmail ?? "");
   const [city, setCity] = useState("");
   const [message, setMessage] = useState(() => {
     // Prefill from the "เริ่มวางแผนยิมของคุณ" form on the home page.
@@ -203,6 +211,21 @@ export function QuoteClient({ products }: { products: Product[] }) {
           )}
 
           <Section n="01" title="ข้อมูลติดต่อ">
+            {accountEmail ? (
+              <p className="rounded-lg bg-stage px-4 py-3 text-sm text-muted">
+                เข้าสู่ระบบแล้วที่ <span className="font-semibold text-ink">{accountEmail}</span> — ทีมงานจะใช้เมลนี้ติดต่อกลับได้{" "}
+                <Link href="/account" className="font-semibold text-ink underline-offset-2 hover:underline">
+                  ดูบัญชี
+                </Link>
+              </p>
+            ) : (
+              <p className="rounded-lg bg-stage px-4 py-3 text-sm text-muted">
+                ต้องการให้ทีมงานรู้เมลติดต่ออัตโนมัติ?{" "}
+                <Link href="/login?next=/quote" className="font-semibold text-ink underline-offset-2 hover:underline">
+                  เข้าสู่ระบบด้วย Google
+                </Link>
+              </p>
+            )}
             <div className="grid gap-[18px] md:grid-cols-2">
               <Field label="ชื่อผู้ติดต่อ" error={errors.name ? "กรอกชื่อผู้ติดต่อ" : undefined}>
                 <input name="contact_name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" aria-invalid={errors.name} className={`${input} ${errors.name ? "border-2 border-[#c8101a]" : ""}`} />

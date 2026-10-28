@@ -1,11 +1,9 @@
 import { cacheLife } from "next/cache";
-import { categories as sampleCategories, sampleProducts } from "@/lib/data/sample-products";
 import { catalogClient, productMediaUrl, supabaseConfigured } from "@/lib/supabase";
 import type { Category, CategoryId, PictogramKind, Product, StockStatus } from "@/lib/types";
 
-// Catalog repository. Pages only talk to these functions. With Supabase configured
-// (.env.local) they read the products_public view; without it they return the
-// sample data so the prototype still runs. Return shapes match src/lib/types.ts.
+// Catalog repository. Pages only talk to these functions. Reads products_public
+// when Supabase is configured; otherwise returns empty lists.
 
 /** Row of the products_public view (backend repo, supabase/migrations/*_api.sql). */
 type ProductRow = {
@@ -62,7 +60,7 @@ function toProduct(row: ProductRow): Product {
 }
 
 async function fetchProducts(): Promise<Product[]> {
-  if (!supabaseConfigured) return sampleProducts;
+  if (!supabaseConfigured) return [];
   const { data, error } = await catalogClient()
     .from("products_public")
     .select("*")
@@ -80,7 +78,7 @@ export async function getProducts(): Promise<Product[]> {
 export async function getProduct(slug: string): Promise<Product | undefined> {
   "use cache";
   cacheLife("hours");
-  if (!supabaseConfigured) return sampleProducts.find((p) => p.slug === slug);
+  if (!supabaseConfigured) return undefined;
   const { data, error } = await catalogClient().from("products_public").select("*").eq("slug", slug).maybeSingle();
   if (error) throw new Error(`Loading product ${slug} failed: ${error.message}`);
   return data ? toProduct(data as ProductRow) : undefined;
@@ -95,7 +93,7 @@ export async function getNewArrivals(limit = 3): Promise<Product[]> {
 export async function getCategories(): Promise<Category[]> {
   "use cache";
   cacheLife("days");
-  if (!supabaseConfigured) return sampleCategories;
+  if (!supabaseConfigured) return [];
   const { data, error } = await catalogClient().from("categories").select("id, name_th, name_en").order("sort");
   if (error) throw new Error(`Loading categories failed: ${error.message}`);
   return data.map((c) => ({ id: c.id as CategoryId, nameTh: c.name_th, nameEn: c.name_en }));

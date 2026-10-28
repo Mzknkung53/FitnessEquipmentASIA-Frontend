@@ -25,7 +25,7 @@ function Count({ n, tone }: { n: number; tone: "red" | "white" }) {
   );
 }
 
-export function SiteHeader() {
+export function SiteHeader({ accountEmail = null }: { accountEmail?: string | null }) {
   const pathname = usePathname();
   const { quote, cart, currency } = useShop();
   const [open, setOpen] = useState(false);
@@ -76,6 +76,14 @@ export function SiteHeader() {
                 <Count n={cartCount} tone="white" />
               </Link>
             )}
+            <Link
+              href={accountEmail ? "/account" : "/login"}
+              aria-label={accountEmail ? `บัญชี ${accountEmail}` : "เข้าสู่ระบบ"}
+              title={accountEmail || "เข้าสู่ระบบ"}
+              className="hidden max-w-[160px] truncate rounded-full px-3 py-2 text-sm font-semibold hover:bg-[#1f1d1b] sm:inline-flex"
+            >
+              {accountEmail ? accountEmail.split("@")[0] : "เข้าสู่ระบบ"}
+            </Link>
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-nav" aria-label="เมนู" className="grid size-11 place-items-center rounded-full hover:bg-[#1f1d1b] lg:hidden">
               <Icon name={open ? "x" : "menu"} size={22} />
             </button>
@@ -89,6 +97,9 @@ export function SiteHeader() {
                   {n.label}
                 </Link>
               ))}
+              <Link href={accountEmail ? "/account" : "/login"} onClick={() => setOpen(false)} className="flex min-h-12 items-center font-display text-lg font-medium">
+                {accountEmail ? "บัญชีของฉัน" : "เข้าสู่ระบบ"}
+              </Link>
             </div>
           </nav>
         )}

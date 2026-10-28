@@ -1,13 +1,12 @@
 # Fitness Equipment Asia — Frontend
 
-Storefront prototype for Fitness Equipment Asia, built from the "V3 · A + B" design
+Storefront for Fitness Equipment Asia, built from the "V3 · A + B" design
 (Iron Red, with elements from Black Steel). The UI is Thai-first.
 
-> **Catalog + quotation site.** Products come from Supabase (or built-in sample data when
-> Supabase is not configured). Quote and repair requests are saved to the database.
-> There is no online ordering or payment for now: checkout is switched off
-> (`checkoutEnabled` in `src/lib/site.ts`) and every product goes through the quote flow.
-> Prices are shown **excluding VAT**.
+> **Catalog + quotation site.** Products come from Supabase. Quote and repair
+> requests are saved to the database. There is no online ordering or payment for
+> now: checkout is switched off (`checkoutEnabled` in `src/lib/site.ts`) and every
+> product goes through the quote flow. Prices are shown **excluding VAT**.
 
 ## Stack
 
@@ -33,15 +32,18 @@ npm run build
 | `/quote` | Quote basket + request form, saved via `submit_quote_request` (optional file attachment) |
 | `/checkout` | Switched off (redirects to `/quote`); kept for if online ordering is added later |
 | `/showroom` | Showroom, contact channels, guides, warranty, service request (saved to the database), FAQ |
-| `/staff` | Staff unit-scan concept (no auth yet, `noindex`) |
+| `/login` | Customer Google login |
+| `/account` | Signed-in customer contact email |
+| `/staff/login` | Staff Google login |
+| `/staff` | Staff workspace (stock scan UI; other menus not built yet), `noindex` |
 
 ## Where things live
 
 - `src/lib/types.ts` — data contract (Product, Variant, StockUnit, QuoteRequest…)
-- `src/lib/catalog.ts` — the only place pages read catalog data from (`products_public` view, or sample data)
-- `src/lib/supabase.ts` — server-only Supabase clients; keys never reach the browser
+- `src/lib/catalog.ts` — the only place pages read catalog data from (`products_public`)
+- `src/lib/supabase.ts` — server-only Supabase clients (secret key never reaches the browser)
+- `src/lib/supabase/` — browser/SSR clients for Auth
 - `src/app/(site)/quote/actions.ts`, `src/app/(site)/showroom/actions.ts` — Server Actions that save the forms
-- `src/lib/data/` — sample products and stock (replace before launch)
 - `src/lib/pricing.ts` — price modes; unknown prices are never shown as ฿0
 - `src/lib/shop-store.ts` — quote basket, cart and currency kept in localStorage
 - `src/lib/site.ts` — contact channels and showroom placeholders (`[...]` = owner must supply)
@@ -59,10 +61,10 @@ The database schema, security rules and form functions live in the
 (`supabase/migrations/`, design notes in Thai in `docs/database-design.md`).
 
 1. Create a Supabase project, then apply the backend migrations (`supabase db push`, or paste each
-   migration file into the SQL Editor in name order). For demo products, also run `supabase/seed.sql` once.
+   migration file into the SQL Editor in name order).
 2. Copy `.env.example` to `.env.local` and fill in the project URL, publishable key and secret key
-   (Project Settings → API Keys). The secret key is used only in server code.
-3. Upload the product photos to Storage:
+   (Project Settings → API Keys). Also set `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for Auth in the browser.
+3. Upload product photos to Storage when you have them:
 
    ```bash
    node --env-file=.env.local scripts/upload-product-images.mjs
@@ -71,5 +73,19 @@ The database schema, security rules and form functions live in the
 4. `npm run dev`. Quote and repair requests then appear in the `quote_requests` / `service_requests`
    tables, with files in the private `quote-attachments` / `service-attachments` buckets.
 
-Not connected yet: the `/staff` page (still sample data, needs staff login) and the USD rate
+## Auth (Google)
+
+1. In Supabase → **Authentication → Providers → Google**, turn it on and paste the Google Cloud
+   OAuth Client ID / Secret.
+2. In Supabase → **Authentication → URL Configuration**, set:
+   - Site URL: `http://localhost:3000`
+   - Redirect URLs: `http://localhost:3000/auth/callback`
+3. Admin bootstrap: `chatchye3@gmail.com` is on `private.staff_allowlist` as `admin`. The first
+   Google login with that email creates `staff_profiles`.
+4. Pages:
+   - `/login` — customer Google login (email saved to `customer_profiles`)
+   - `/account` — shows the contact email staff will use
+   - `/staff/login` — staff Google login → `/staff`
+
+Still concept-only: product CRUD on `/staff` (use Supabase Table Editor for now) and the USD rate
 (`DEMO_THB_PER_USD`; the database has `current_exchange_rates`).
