@@ -9,8 +9,9 @@ const nextConfig: NextConfig = {
     remotePatterns: supabaseUrl ? [new URL(`${supabaseUrl}/storage/v1/object/public/product-media/**`)] : [],
   },
   experimental: {
-    // Quote / repair forms + staff product photos (several images per save).
-    serverActions: { bodySizeLimit: "50mb" },
+    // Applies to every Server Action, public forms included, so keep it tight:
+    // one 20 MB quote / repair attachment. Staff photos are shrunk in the browser first.
+    serverActions: { bodySizeLimit: "21mb" },
   },
   partialPrefetching: true,
   turbopack: {

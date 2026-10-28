@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,8 +21,9 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Refresh the session so Server Components see an up-to-date user.
-  await supabase.auth.getUser();
+  // Refresh the session cookie so Server Components see an up-to-date user.
+  // getClaims verifies the JWT locally when the project uses asymmetric signing keys.
+  await supabase.auth.getClaims();
   return response;
 }
 

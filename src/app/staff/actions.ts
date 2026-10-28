@@ -128,16 +128,16 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
 
   const supabase = await createServerSupabase();
 
-  const { error: catError } = await supabase.from("categories").upsert(
-    {
-      id: categoryId,
-      name_th: categoryNameTh,
-      name_en: categoryNameEn,
-      sort: 100,
-    },
-    { onConflict: "id" },
-  );
-  if (catError) return { ok: false, error: `หมวดหมู่: ${catError.message}` };
+  // Create the category only if it is new; an existing one keeps its names and order.
+  const { data: existingCategory } = await supabase.from("categories").select("id").eq("id", categoryId).maybeSingle();
+  if (!existingCategory) {
+    const { data: last } = await supabase.from("categories").select("sort").order("sort", { ascending: false }).limit(1).maybeSingle();
+    const { error: catError } = await supabase.from("categories").upsert(
+      { id: categoryId, name_th: categoryNameTh, name_en: categoryNameEn, sort: (last?.sort ?? 0) + 10 },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
+    if (catError) return { ok: false, error: `หมวดหมู่: ${catError.message}` };
+  }
 
   const { data: product, error: productError } = await supabase
     .from("products")
@@ -174,6 +174,13 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
     return { ok: false, error: `รุ่นย่อย: ${variantError.message}` };
   }
 
+  // Undo a half-saved product: the row (variants/media cascade) and any uploaded photos.
+  const uploaded: string[] = [];
+  const rollback = async () => {
+    if (uploaded.length > 0) await supabase.storage.from("product-media").remove(uploaded);
+    await supabase.from("products").delete().eq("id", product.id);
+  };
+
   const mediaRows: {
     product_id: string;
     kind: "image" | "video";
@@ -197,9 +204,10 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
       upsert: true,
     });
     if (uploadError) {
-      await supabase.from("products").delete().eq("id", product.id);
+      await rollback();
       return { ok: false, error: `อัปโหลด${slot.label}ไม่สำเร็จ: ${uploadError.message}` };
     }
+    uploaded.push(path);
     mediaRows.push({
       product_id: product.id,
       kind: "image",
@@ -223,7 +231,7 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
   if (mediaRows.length > 0) {
     const { error: mediaError } = await supabase.from("product_media").insert(mediaRows);
     if (mediaError) {
-      await supabase.from("products").delete().eq("id", product.id);
+      await rollback();
       return { ok: false, error: `บันทึกสื่อไม่สำเร็จ: ${mediaError.message}` };
     }
   }

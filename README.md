@@ -35,7 +35,8 @@ npm run build
 | `/login` | Customer Google login |
 | `/account` | Signed-in customer contact email |
 | `/staff/login` | Staff Google login |
-| `/staff` | Staff workspace (stock scan UI; other menus not built yet), `noindex` |
+| `/staff` | Staff product list with search, `noindex` |
+| `/staff/products/new` | Add a product in 3 steps (info, price/status, photos); photos are shrunk in the browser |
 
 ## Where things live
 
@@ -81,11 +82,15 @@ The database schema, security rules and form functions live in the
    - Site URL: `http://localhost:3000`
    - Redirect URLs: `http://localhost:3000/auth/callback`
 3. Admin bootstrap: `chatchye3@gmail.com` is on `private.staff_allowlist` as `admin`. The first
-   Google login with that email creates `staff_profiles`.
+   Google login with that email (confirmed) creates `staff_profiles` once; after that, disable or
+   change a role in `staff_profiles` directly (see the backend README). Turn off the Email provider,
+   since only Google is used.
 4. Pages:
    - `/login` — customer Google login (email saved to `customer_profiles`)
    - `/account` — shows the contact email staff will use
    - `/staff/login` — staff Google login → `/staff`
 
-Still concept-only: product CRUD on `/staff` (use Supabase Table Editor for now) and the USD rate
+`src/proxy.ts` (Next 16's name for middleware) keeps the session cookie fresh.
+
+Still concept-only: editing / hiding existing products (use Supabase Table Editor for now) and the USD rate
 (`DEMO_THB_PER_USD`; the database has `current_exchange_rates`).

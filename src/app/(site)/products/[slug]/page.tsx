@@ -8,8 +8,14 @@ import { ProductCard } from "@/components/product-card";
 import { ProductGallery, ProductPurchase } from "@/app/(site)/products/[slug]/product-client";
 import { getCategories, getProduct, getProducts } from "@/lib/catalog";
 
+// Cache Components requires at least one param at build time. With an empty catalog
+// (new project, or Supabase not configured) use a slug the database can never hold
+// (its check only allows a-z, 0-9 and "-"); it renders the 404 page.
+const NO_PRODUCTS_SLUG = "_";
+
 export async function generateStaticParams() {
   const products = await getProducts();
+  if (products.length === 0) return [{ slug: NO_PRODUCTS_SLUG }];
   return products.map((p) => ({ slug: p.slug }));
 }
 
