@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { submitQuoteRequest } from "@/app/(site)/quote/actions";
 import { Icon } from "@/components/icons";
 import { Pictogram, StatusChip } from "@/components/product-bits";
 import { QtyStepper } from "@/components/qty-stepper";
-import { formatMoney } from "@/lib/pricing";
+import { formatMoney, VAT_RATE } from "@/lib/pricing";
 import { shop, useShop } from "@/lib/shop-store";
 import { destinationCountries } from "@/lib/site";
 import type { ContactMethod, Product } from "@/lib/types";
@@ -36,6 +37,9 @@ export function QuoteClient({ products }: { products: Product[] }) {
   });
   const [tried, setTried] = useState(false);
   const [sentRef, setSentRef] = useState<string | null>(null);
+  const [attachmentFailed, setAttachmentFailed] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sending, startSending] = useTransition();
 
   const lines = quote
     .map((l) => {
@@ -56,16 +60,26 @@ export function QuoteClient({ products }: { products: Product[] }) {
   const errorCount = Object.values(errors).filter(Boolean).length;
   const advisoryOnly = lines.length === 0;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim() || !contact.trim() || !city.trim()) {
       setTried(true);
       return;
     }
-    // Prototype: nothing is sent. The backend will create the request, notify staff
-    // and return the real reference. It must not charge money or reserve stock.
-    setSentRef(`Q-DEMO-${String(lines.length).padStart(2, "0")}${name.trim().length}`);
-    shop.clearQuote();
+    const form = new FormData(e.currentTarget);
+    form.set("items", JSON.stringify(lines.map((l) => ({ sku: l.sku, qty: l.qty, note: l.note }))));
+    setSendError(null);
+    // Saves the request in Supabase. It never charges money or reserves stock.
+    startSending(async () => {
+      const result = await submitQuoteRequest(form);
+      if (!result.ok) {
+        setSendError(result.error);
+        return;
+      }
+      setSentRef(result.reference);
+      setAttachmentFailed(Boolean(result.attachmentFailed));
+      shop.clearQuote();
+    });
   };
 
   if (!ready) return <div className="wrap min-h-[70vh] py-24 text-muted" aria-busy="true">กำลังโหลดรายการขอราคา…</div>;
@@ -85,8 +99,12 @@ export function QuoteClient({ products }: { products: Product[] }) {
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-muted-night">เลขอ้างอิง</span>
             <span className="rounded-md bg-[#1f1d1a] px-3.5 py-1.5 font-mono text-xl">{sentRef}</span>
-            <span className="rounded border border-dashed border-[#5a544d] px-2 py-0.5 text-xs text-muted-night">ต้นแบบ · ยังไม่ได้ส่งจริง</span>
           </div>
+          {attachmentFailed && (
+            <span className="flex items-center gap-2 text-[#e3b25a]">
+              <Icon name="alert" /> แนบไฟล์ไม่สำเร็จ กรุณาส่งไฟล์ให้ทีมงานทาง {m.label} พร้อมเลขอ้างอิงนี้
+            </span>
+          )}
           <ol className="flex flex-col border-b border-night-line">
             {["ทีมงานตรวจสอบสินค้า สต็อก ค่าขนส่ง ส่วนลด และการติดตั้ง", `ติดต่อกลับทาง ${m.label} เพื่อยืนยันรายละเอียด`, "ส่งใบเสนอราคาฉบับสุดท้าย ก่อนมีการชำระเงินใด ๆ"].map((t, i) => (
               <li key={t} className="flex gap-5 border-t border-night-line py-[18px]">
@@ -187,10 +205,10 @@ export function QuoteClient({ products }: { products: Product[] }) {
           <Section n="01" title="ข้อมูลติดต่อ">
             <div className="grid gap-[18px] md:grid-cols-2">
               <Field label="ชื่อผู้ติดต่อ" error={errors.name ? "กรอกชื่อผู้ติดต่อ" : undefined}>
-                <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" aria-invalid={errors.name} className={`${input} ${errors.name ? "border-2 border-[#c8101a]" : ""}`} />
+                <input name="contact_name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" aria-invalid={errors.name} className={`${input} ${errors.name ? "border-2 border-[#c8101a]" : ""}`} />
               </Field>
               <Field label="บริษัท / ชื่อยิม" optional>
-                <input autoComplete="organization" className={input} />
+                <input name="company" autoComplete="organization" className={input} />
               </Field>
             </div>
             <fieldset className="flex flex-col gap-2">
@@ -198,7 +216,7 @@ export function QuoteClient({ products }: { products: Product[] }) {
               <div className="flex flex-wrap gap-2">
                 {methods.map((x) => (
                   <label key={x.id} className={`inline-flex min-h-[46px] cursor-pointer items-center gap-2 rounded-full border px-4 text-[15px] font-medium ${method === x.id ? "border-ink bg-ink text-white" : "border-[#d6d2cb] bg-white"}`}>
-                    <input type="radio" name="method" checked={method === x.id} onChange={() => setMethod(x.id)} className="size-[18px] accent-white" />
+                    <input type="radio" name="contact_method" value={x.id} checked={method === x.id} onChange={() => setMethod(x.id)} className="size-[18px] accent-white" />
                     {x.label}
                   </label>
                 ))}
@@ -206,7 +224,7 @@ export function QuoteClient({ products }: { products: Product[] }) {
             </fieldset>
             <div className="grid gap-[18px] md:grid-cols-2">
               <Field label={m.field} error={errors.contact ? `กรอก${m.field} เพื่อให้ทีมงานติดต่อกลับได้` : undefined}>
-                <input value={contact} onChange={(e) => setContact(e.target.value)} aria-invalid={errors.contact} className={`${input} ${errors.contact ? "border-2 border-[#c8101a]" : ""}`} />
+                <input name="contact_value" value={contact} onChange={(e) => setContact(e.target.value)} aria-invalid={errors.contact} className={`${input} ${errors.contact ? "border-2 border-[#c8101a]" : ""}`} />
               </Field>
             </div>
           </Section>
@@ -214,24 +232,24 @@ export function QuoteClient({ products }: { products: Product[] }) {
           <Section n="02" title="ปลายทางและการติดตั้ง">
             <div className="grid gap-[18px] md:grid-cols-2">
               <Field label="ประเทศปลายทาง" hint="ภาษาบนเว็บไม่เกี่ยวกับประเทศปลายทาง">
-                <select className={input}>
+                <select name="country" className={input}>
                   {destinationCountries.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </select>
               </Field>
               <Field label="จังหวัด / เมือง" error={errors.city ? "กรอกจังหวัดหรือเมือง เพื่อประเมินค่าขนส่ง" : undefined}>
-                <input value={city} onChange={(e) => setCity(e.target.value)} aria-invalid={errors.city} className={`${input} ${errors.city ? "border-2 border-[#c8101a]" : ""}`} />
+                <input name="city" value={city} onChange={(e) => setCity(e.target.value)} aria-invalid={errors.city} className={`${input} ${errors.city ? "border-2 border-[#c8101a]" : ""}`} />
               </Field>
               <Field label="รหัสไปรษณีย์" optional>
-                <input inputMode="numeric" className={input} />
+                <input name="postcode" inputMode="numeric" className={input} />
               </Field>
             </div>
             <fieldset className="flex flex-wrap gap-2">
               <legend className="pb-2 text-sm font-semibold">ต้องการให้ติดตั้งหรือไม่</legend>
-              {["ต้องการติดตั้ง", "ไม่ต้องการ", "ยังไม่แน่ใจ"].map((t, i) => (
-                <label key={t} className="inline-flex min-h-[46px] cursor-pointer items-center gap-2 rounded-full border border-[#d6d2cb] bg-white px-4 text-[15px] has-[:checked]:border-ink">
-                  <input type="radio" name="install" defaultChecked={i === 0} className="size-[18px] accent-ink" />
+              {[["yes", "ต้องการติดตั้ง"], ["no", "ไม่ต้องการ"], ["unsure", "ยังไม่แน่ใจ"]].map(([value, t], i) => (
+                <label key={value} className="inline-flex min-h-[46px] cursor-pointer items-center gap-2 rounded-full border border-[#d6d2cb] bg-white px-4 text-[15px] has-[:checked]:border-ink">
+                  <input type="radio" name="installation" value={value} defaultChecked={i === 0} className="size-[18px] accent-ink" />
                   {t}
                 </label>
               ))}
@@ -241,9 +259,9 @@ export function QuoteClient({ products }: { products: Product[] }) {
                 การขนเข้าพื้นที่ <span className="text-sm font-normal text-muted">ช่วยให้ประเมินค่าขนส่งและติดตั้งแม่นขึ้น</span>
               </span>
               <div className="grid gap-x-[18px] md:grid-cols-2">
-                {["ติดตั้งชั้น 2 ขึ้นไป", "มีลิฟต์ขนของ", "ต้องขนขึ้นบันได", "รถบรรทุกเข้าถึงจุดขนลงได้"].map((t) => (
-                  <label key={t} className="flex min-h-[42px] items-center gap-2.5">
-                    <input type="checkbox" className="size-[18px] accent-ink" />
+                {[["access_upper_floor", "ติดตั้งชั้น 2 ขึ้นไป"], ["access_lift", "มีลิฟต์ขนของ"], ["access_stairs", "ต้องขนขึ้นบันได"], ["access_truck", "รถบรรทุกเข้าถึงจุดขนลงได้"]].map(([field, t]) => (
+                  <label key={field} className="flex min-h-[42px] items-center gap-2.5">
+                    <input type="checkbox" name={field} className="size-[18px] accent-ink" />
                     {t}
                   </label>
                 ))}
@@ -254,17 +272,17 @@ export function QuoteClient({ products }: { products: Product[] }) {
           <Section n="03" title="ข้อมูลเพิ่มเติม" note="(ไม่บังคับ)">
             <div className="grid gap-[18px] md:grid-cols-2">
               <Field label="วันที่ต้องการรับสินค้า">
-                <input type="date" className={input} />
+                <input type="date" name="target_date" className={input} />
               </Field>
               <Field label="งบประมาณโดยประมาณ">
-                <input placeholder="เช่น 1,500,000 บาท" className={input} />
+                <input name="budget" placeholder="เช่น 1,500,000 บาท" className={input} />
               </Field>
             </div>
-            <Field label="แนบแปลนพื้นที่หรือรูปห้อง" hint="PDF, JPG หรือ PNG">
-              <input type="file" accept=".pdf,image/*" className="min-h-16 rounded-[10px] border-[1.5px] border-dashed border-control bg-white p-[18px] text-sm" />
+            <Field label="แนบแปลนพื้นที่หรือรูปห้อง" hint="PDF, JPG หรือ PNG ไม่เกิน 20 MB">
+              <input type="file" name="attachment" accept=".pdf,image/jpeg,image/png,image/webp,image/heic" className="min-h-16 rounded-[10px] border-[1.5px] border-dashed border-control bg-white p-[18px] text-sm" />
             </Field>
             <Field label="ข้อความถึงทีมงาน">
-              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="เช่น ยิมขนาด 120 ตร.ม. เน้นคาร์ดิโอและเวทฟรี" className={`${input} py-3`} />
+              <textarea name="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="เช่น ยิมขนาด 120 ตร.ม. เน้นคาร์ดิโอและเวทฟรี" className={`${input} py-3`} />
             </Field>
           </Section>
         </div>
@@ -276,19 +294,25 @@ export function QuoteClient({ products }: { products: Product[] }) {
             <SumRow label={`สินค้ารอเสนอราคา (${lines.length - priced.length})`} value="รอเสนอราคา" pending />
             <SumRow label="ค่าขนส่ง" value="ให้ทีมงานประเมิน" pending />
             <SumRow label="ค่าติดตั้ง" value="รอประเมิน" pending />
-            <SumRow label="ภาษี / อากรนำเข้า" value="รอประเมิน" pending />
+            <SumRow label={`VAT ${Math.round(VAT_RATE * 100)}% (จัดส่งในไทย)`} value={formatMoney(Math.round(subtotal * VAT_RATE), currency)} />
+            <SumRow label="อากรนำเข้า (ต่างประเทศ)" value="รอประเมิน" pending />
           </div>
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-muted-night">ยอดรวมเบื้องต้น</span>
-            <span className="font-display text-[34px] font-bold tabular-nums">{formatMoney(subtotal, currency)}+</span>
+            <span className="text-muted-night">ยอดรวมเบื้องต้น (รวม VAT)</span>
+            <span className="font-display text-[34px] font-bold tabular-nums">{formatMoney(Math.round(subtotal * (1 + VAT_RATE)), currency)}+</span>
           </div>
-          <span className="text-[13px] text-muted-night">รวมเฉพาะสินค้าที่มีราคา ยังไม่ใช่ราคาสุดท้าย ส่วนลดสำหรับการซื้อจำนวนมากพิจารณาในใบเสนอราคา</span>
-          <button type="submit" className="min-h-[60px] rounded-lg bg-brand font-display text-[19px] font-semibold text-white hover:bg-brand-dark">
-            {advisoryOnly ? "ขอคำแนะนำจัดชุดยิม" : "ส่งคำขอใบเสนอราคา"}
+          <span className="text-[13px] text-muted-night">ราคาสินค้ายังไม่รวม VAT · รวมเฉพาะสินค้าที่มีราคา ยังไม่ใช่ราคาสุดท้าย ส่วนลดสำหรับการซื้อจำนวนมากพิจารณาในใบเสนอราคา</span>
+          {sendError && (
+            <span role="alert" className="flex items-center gap-2 rounded-lg bg-[#3a1416] px-4 py-3 text-[15px] font-semibold text-[#ff5a61]">
+              <Icon name="alert" className="shrink-0" /> {sendError}
+            </span>
+          )}
+          <button type="submit" disabled={sending} className="min-h-[60px] rounded-lg bg-brand font-display text-[19px] font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
+            {sending ? "กำลังส่ง…" : advisoryOnly ? "ขอคำแนะนำจัดชุดยิม" : "ส่งคำขอใบเสนอราคา"}
           </button>
           <span className="flex gap-2 text-[13px] text-[#d8d3cc]">
             <Icon name="check" className="shrink-0 text-[#3ecf6e]" />
-            ไม่มีการเรียกเก็บเงิน ไม่สร้างคำสั่งซื้อ และยังไม่จองสินค้า
+            ไม่มีการเรียกเก็บเงิน และยังไม่จองสินค้า
           </span>
         </aside>
       </form>

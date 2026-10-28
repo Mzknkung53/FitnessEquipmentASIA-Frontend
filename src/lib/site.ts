@@ -16,4 +16,11 @@ export const showroom = {
   phone: "[เบอร์โทรศัพท์]",
 };
 
+/**
+ * Online ordering is off: the site is a catalog + quotation tool for now and every
+ * product goes through the quote flow. The checkout UI is kept for later, but the
+ * database has no order or payment tables yet, so do not turn this on before those exist.
+ */
+export const checkoutEnabled = false;
+
 export const destinationCountries = ["ไทย", "ลาว", "เมียนมา", "จีน", "ประเทศอื่น"];

@@ -1,6 +1,10 @@
+import { checkoutEnabled } from "@/lib/site";
 import type { PriceMode, Product, StockStatus, Variant } from "@/lib/types";
 
 export type Currency = "THB" | "USD";
+
+/** Catalog prices exclude VAT. Thai VAT applies to domestic sales; exports are quoted by staff. */
+export const VAT_RATE = 0.07;
 
 /** Demo-only indicative rate. Must come from the backend before launch. */
 const DEMO_THB_PER_USD = 36;
@@ -30,9 +34,9 @@ export function productStatus(product: Product): StockStatus {
   return order.find((s) => product.variants.some((v) => v.status === s)) ?? "out";
 }
 
-/** Direct purchase only for a fixed price with stock on hand; everything else goes to the quote flow. */
+/** Direct purchase only for a fixed price with stock on hand, and only while checkout is on; everything else goes to the quote flow. */
 export function canBuy(variant: Variant): boolean {
-  return variant.priceThb != null && variant.status === "ready";
+  return checkoutEnabled && variant.priceThb != null && variant.status === "ready";
 }
 
 export const statusMeta: Record<StockStatus, { label: string; dot: string }> = {

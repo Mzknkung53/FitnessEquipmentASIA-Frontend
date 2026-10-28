@@ -93,7 +93,7 @@ export function ProductPurchase({ product }: { product: Product }) {
     priceNote = "รุ่นนี้ต้องให้ทีมงานเสนอราคา";
   } else {
     priceText = formatMoney(variant.priceThb, currency);
-    priceNote = buyable ? "ราคายังไม่รวมค่าขนส่งและติดตั้ง" : "ส่งคำขอเพื่อยืนยันราคาและวันส่ง";
+    priceNote = buyable ? "ราคายังไม่รวม VAT ค่าขนส่งและติดตั้ง" : "ราคายังไม่รวม VAT · ส่งคำขอเพื่อยืนยันราคาและวันส่ง";
   }
   if (currency === "USD" && (variant?.priceThb ?? summary.amount) != null) priceNote = `ราคาโดยประมาณ (USD) · ${priceNote}`;
 

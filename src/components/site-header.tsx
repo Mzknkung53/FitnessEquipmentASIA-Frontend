@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { shop, useShop } from "@/lib/shop-store";
+import { checkoutEnabled } from "@/lib/site";
 
 const nav = [
   { href: "/products", label: "สินค้า" },
@@ -69,10 +70,12 @@ export function SiteHeader() {
               <Icon name="quote" size={21} />
               <Count n={quoteCount} tone="red" />
             </Link>
-            <Link href="/checkout" aria-label={`ตะกร้า ${cartCount} ชิ้น`} className="relative grid size-11 place-items-center rounded-full hover:bg-[#1f1d1b]">
-              <Icon name="bag" size={21} />
-              <Count n={cartCount} tone="white" />
-            </Link>
+            {checkoutEnabled && (
+              <Link href="/checkout" aria-label={`ตะกร้า ${cartCount} ชิ้น`} className="relative grid size-11 place-items-center rounded-full hover:bg-[#1f1d1b]">
+                <Icon name="bag" size={21} />
+                <Count n={cartCount} tone="white" />
+              </Link>
+            )}
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-nav" aria-label="เมนู" className="grid size-11 place-items-center rounded-full hover:bg-[#1f1d1b] lg:hidden">
               <Icon name={open ? "x" : "menu"} size={22} />
             </button>
