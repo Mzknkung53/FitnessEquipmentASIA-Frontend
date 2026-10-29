@@ -42,7 +42,7 @@ export async function StaffHeader({ profile, active }: { profile: AuthProfile; a
     <header className="sticky top-0 z-20 border-b border-[#1f1d1a] bg-[#0b0a09]/95 backdrop-blur" style={{ viewTransitionName: "staff-header" }}>
       <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-x-6 gap-y-2 px-4 pt-3 sm:px-6">
         <Link href="/staff" className="flex items-center gap-3">
-          <Image src="/brand/fea-logo-on-black.jpg" alt="Fitness Equipment Asia" width={857} height={251} className="h-auto w-[120px]" />
+          <Image src="/brand/fea-logo.png" alt="Fitness Equipment Asia" width={818} height={229} className="h-auto w-[120px]" />
           <span className="rounded border border-[#3d3934] px-2 py-0.5 text-xs font-semibold text-muted-night">หลังร้าน</span>
         </Link>
         <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">

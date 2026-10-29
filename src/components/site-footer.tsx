@@ -7,7 +7,7 @@ export function SiteFooter() {
     <footer className="border-t-4 border-brand bg-night text-white">
       <div className="wrap grid gap-10 pt-16 pb-12 text-[15px] sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col gap-4">
-          <Image src="/brand/fea-logo-on-black.jpg" alt="Fitness Equipment Asia" width={857} height={251} className="h-auto w-[200px]" />
+          <Image src="/brand/fea-logo.png" alt="Fitness Equipment Asia" width={818} height={229} className="h-auto w-[200px]" />
           <p className="text-muted-night">อุปกรณ์ฟิตเนสสำหรับบ้านและธุรกิจยิม ในไทย ลาว เมียนมา และจีน</p>
         </div>
         <FooterCol title="สินค้า" links={[["/products", "สินค้าทั้งหมด"], ["/products?cat=plate-loaded", "Plate-Loaded"], ["/products?cat=cardio", "คาร์ดิโอ"], ["/products?cat=racks", "แร็คและฟรีเวท"]]} />

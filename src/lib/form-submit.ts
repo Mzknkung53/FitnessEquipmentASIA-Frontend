@@ -54,7 +54,7 @@ export function dbErrorMessage(error: { code?: string; message: string }): strin
  * Uploads a customer file to a private bucket and links it to the request.
  * Returns false on failure; the request itself is already saved by then.
  */
-export async function attachFile(bucket: "quote-attachments" | "service-attachments", reference: string, f: File): Promise<boolean> {
+export async function attachFile(bucket: "quote-attachments", reference: string, f: File): Promise<boolean> {
   const supabase = serviceClient();
   const path = `${reference}/${randomUUID()}.${extensions[f.type] ?? "bin"}`;
   const upload = await supabase.storage.from(bucket).upload(path, f, { contentType: f.type });

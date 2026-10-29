@@ -10,6 +10,15 @@ export const contactChannels: { name: string; handle: string; href?: string }[] 
   { name: "โทรศัพท์", handle: "[เบอร์โทรศัพท์]" },
 ];
 
+/**
+ * Repairs and warranty claims are handled in chat, not through a web form.
+ * A channel without href shows its handle only; for LINE, use https://line.me/R/ti/p/@<id>.
+ */
+export const chatChannels: { name: string; handle: string; href?: string }[] = [
+  { name: "Messenger", handle: "Fitness Equipment Asia", href: "https://m.me/fitnessequipmentasia" },
+  { name: "LINE", handle: "[LINE ID]" },
+];
+
 export const showroom = {
   address: "[ที่อยู่โชว์รูม]",
   hours: "[วันและเวลาทำการ]",

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ServiceForm } from "@/app/(site)/showroom/service-form";
 import { Icon, PlayIcon } from "@/components/icons";
 import { getProducts } from "@/lib/catalog";
-import { contactChannels, showroom } from "@/lib/site";
+import { chatChannels, contactChannels, showroom } from "@/lib/site";
 
 export const metadata: Metadata = { title: "โชว์รูม ติดต่อ และบริการหลังการขาย" };
 
@@ -132,8 +131,43 @@ export default async function ShowroomPage() {
             ))}
           </dl>
         </div>
-        <div id="service" className="scroll-mt-24">
-          <ServiceForm />
+        <div id="service" className="flex scroll-mt-24 flex-col gap-[18px] rounded-[18px] bg-stage p-6 sm:p-9">
+          <span className="flex items-center gap-3 font-display text-[28px] font-bold">
+            <Icon name="wrench" size={26} className="text-brand" />
+            แจ้งซ่อม / เคลมประกัน
+          </span>
+          <p className="text-ink-2">ทักแชทหาทีมงานได้เลย พร้อมส่งข้อมูลนี้ จะช่วยให้ตรวจเช็กได้เร็วขึ้น</p>
+          <ul className="flex flex-col gap-2 text-[15px]">
+            {["รุ่นสินค้า และหมายเลขเครื่องจากสติกเกอร์ QR (ถ้ามี)", "อาการที่พบ", "รูปหรือวิดีโอตอนเครื่องมีปัญหา"].map((t) => (
+              <li key={t} className="flex items-start gap-2.5">
+                <Icon name="check" size={18} className="mt-0.5 shrink-0 text-brand" />
+                {t}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            {chatChannels.map((c, i) =>
+              c.href ? (
+                <a
+                  key={c.name}
+                  href={c.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-lg px-6 font-display text-lg font-semibold ${
+                    i === 0 ? "bg-ink text-white hover:bg-brand" : "border-[1.5px] border-ink hover:bg-ink hover:text-white"
+                  }`}
+                >
+                  <Icon name="chat" />
+                  แชทผ่าน {c.name}
+                </a>
+              ) : (
+                <span key={c.name} className="inline-flex min-h-[58px] flex-1 flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed border-control px-6 text-center">
+                  <span className="font-display text-lg font-semibold">{c.name}</span>
+                  <span className="text-sm text-muted">{c.handle}</span>
+                </span>
+              ),
+            )}
+          </div>
         </div>
       </section>
 

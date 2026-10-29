@@ -47,7 +47,7 @@ export function SiteHeader({ accountEmail = null }: { accountEmail?: string | nu
       <header className="sticky top-0 z-30 bg-night text-white" style={{ viewTransitionName: "site-header" }}>
         <div className="wrap flex min-h-[84px] items-center justify-between gap-6">
           <Link href="/" aria-label="Fitness Equipment Asia หน้าแรก" className="shrink-0 leading-none">
-            <Image src="/brand/fea-logo-on-black.jpg" alt="Fitness Equipment Asia" width={857} height={251} loading="eager" className="h-12 w-auto sm:h-[58px]" />
+            <Image src="/brand/fea-logo.png" alt="Fitness Equipment Asia" width={818} height={229} loading="eager" className="h-12 w-auto sm:h-[58px]" />
           </Link>
           <nav aria-label="เมนูหลัก" className="hidden gap-9 lg:flex">
             {nav.map((n) => {

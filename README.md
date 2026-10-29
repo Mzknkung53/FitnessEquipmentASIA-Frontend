@@ -3,7 +3,7 @@
 Storefront for Fitness Equipment Asia, built from the "V3 · A + B" design
 (Iron Red, with elements from Black Steel). The UI is Thai-first.
 
-> **Catalog + quotation site.** Products come from Supabase. Quote and repair
+> **Catalog + quotation site.** Products come from Supabase. Quote
 > requests are saved to the database. There is no online ordering or payment for
 > now: checkout is switched off (`checkoutEnabled` in `src/lib/site.ts`) and every
 > product goes through the quote flow. Prices are shown **excluding VAT**.
@@ -31,7 +31,7 @@ npm run build
 | `/products/[slug]` | Product detail: variants (`?v=SKU` preselects, e.g. from a QR), buy vs. quote by price mode |
 | `/quote` | Quote basket + request form, saved via `submit_quote_request` (optional file attachment) |
 | `/checkout` | Switched off (redirects to `/quote`); kept for if online ordering is added later |
-| `/showroom` | Showroom, contact channels, guides, warranty, service request (saved to the database), FAQ |
+| `/showroom` | Showroom, contact channels, guides, warranty, repairs via chat buttons (Messenger / LINE), FAQ |
 | `/login` | Customer Google login |
 | `/account` | Signed-in customer contact email |
 | `/staff/login` | Staff Google login |
@@ -44,10 +44,10 @@ npm run build
 - `src/lib/catalog.ts` — the only place pages read catalog data from (`products_public`)
 - `src/lib/supabase.ts` — server-only Supabase clients (secret key never reaches the browser)
 - `src/lib/supabase/` — browser/SSR clients for Auth
-- `src/app/(site)/quote/actions.ts`, `src/app/(site)/showroom/actions.ts` — Server Actions that save the forms
+- `src/app/(site)/quote/actions.ts` — Server Action that saves the quote form
 - `src/lib/pricing.ts` — price modes; unknown prices are never shown as ฿0
 - `src/lib/shop-store.ts` — quote basket, cart and currency kept in localStorage
-- `src/lib/site.ts` — contact channels and showroom placeholders (`[...]` = owner must supply)
+- `src/lib/site.ts` — contact and chat channels, showroom placeholders (`[...]` = owner must supply)
 
 ## The NEW badge
 
@@ -71,8 +71,8 @@ The database schema, security rules and form functions live in the
    node --env-file=.env.local scripts/upload-product-images.mjs
    ```
 
-4. `npm run dev`. Quote and repair requests then appear in the `quote_requests` / `service_requests`
-   tables, with files in the private `quote-attachments` / `service-attachments` buckets.
+4. `npm run dev`. Quote requests then appear in the `quote_requests`
+   table, with files in the private `quote-attachments` bucket. Repairs are handled in chat.
 
 ## Auth (Google)
 
