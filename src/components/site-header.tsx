@@ -90,7 +90,7 @@ export function SiteHeader({ accountEmail = null }: { accountEmail?: string | nu
           </div>
         </div>
         {open && (
-          <nav id="mobile-nav" aria-label="เมนูหลัก" className="border-t border-night-line lg:hidden">
+          <nav id="mobile-nav" aria-label="เมนูหลัก" className="drop-in border-t border-night-line lg:hidden">
             <div className="wrap flex flex-col py-2">
               {nav.map((n) => (
                 <Link key={n.label} href={n.href} onClick={() => setOpen(false)} className="flex min-h-12 items-center border-b border-night-line font-display text-lg font-medium last:border-0">

@@ -43,3 +43,8 @@ export const getAuthProfile = cache(async (): Promise<AuthProfile | null> => {
     role: isStaff ? (staff!.role as AuthProfile["role"]) : null,
   };
 });
+
+/** Quotes are handled by sales (admin passes every role check in the database too). */
+export function canHandleQuotes(profile: AuthProfile) {
+  return profile.isStaff && (profile.role === "admin" || profile.role === "sales");
+}

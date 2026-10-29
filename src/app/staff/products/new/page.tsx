@@ -20,8 +20,8 @@ async function NewProduct() {
   const categories = await getCategories();
   return (
     <>
-      <StaffHeader profile={profile} />
-      <main className="mx-auto flex max-w-[760px] flex-col gap-6 px-4 pt-6 pb-16 sm:px-6">
+      <StaffHeader profile={profile} active="products" />
+      <main className="page-enter mx-auto flex max-w-[760px] flex-col gap-6 px-4 pt-6 pb-16 sm:px-6">
         <Link href="/staff" className="inline-flex items-center gap-1.5 self-start text-sm text-muted-night hover:text-white">
           <Icon name="arrowLeft" size={14} /> กลับไปรายการสินค้า
         </Link>

@@ -184,7 +184,7 @@ export function ProductPurchase({ product }: { product: Product }) {
           </>
         )}
         {toast && (
-          <div role="status" className="flex items-center justify-between gap-3 rounded-lg bg-night px-4 py-3 text-[15px] text-white">
+          <div role="status" className="flash-in flex items-center justify-between gap-3 rounded-lg bg-night px-4 py-3 text-[15px] text-white">
             <span className="flex items-center gap-2">
               <Icon name="check" className="text-[#3ecf6e]" />
               {toast === "cart" ? "เพิ่มลงตะกร้าซื้อแล้ว" : "เพิ่มในรายการขอราคาแล้ว"}

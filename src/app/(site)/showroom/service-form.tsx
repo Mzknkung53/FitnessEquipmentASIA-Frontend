@@ -27,7 +27,7 @@ export function ServiceForm() {
 
   if (sent) {
     return (
-      <div role="status" className="flex flex-col gap-3 rounded-[18px] bg-night p-9 text-white">
+      <div role="status" className="flash-in flex flex-col gap-3 rounded-[18px] bg-night p-9 text-white">
         <span className="flex items-center gap-2 font-display text-2xl font-bold"><Icon name="check" className="text-[#3ecf6e]" />ได้รับเรื่องแจ้งซ่อมแล้ว</span>
         <span className="flex flex-wrap items-center gap-2 text-muted-night">
           เลขอ้างอิง <span className="rounded-md bg-[#1f1d1a] px-3 py-1 font-mono text-lg text-white">{sent.reference}</span>

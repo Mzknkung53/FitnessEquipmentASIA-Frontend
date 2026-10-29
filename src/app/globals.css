@@ -120,9 +120,111 @@ body {
   to { transform: translateX(-50%); }
 }
 
+/* ---------------------------------------------------------------------------
+   Motion. Short and soft: content arrives (fade + small rise), nothing bounces.
+   Everything below is switched off for people who ask for reduced motion.
+   --------------------------------------------------------------------------- */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Each page arrives: wrapper from (site)/template.tsx and the staff <main>.
+   fill-mode backwards leaves no transform behind, so fixed/sticky children behave. */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.page-enter {
+  animation: page-enter 420ms var(--ease-out) backwards;
+}
+
+/* Sections and product cards below the fold rise in as they scroll into view.
+   Scroll-driven, so it costs no JavaScript; browsers without support show them as is. */
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@supports (animation-timeline: view()) {
+  main section:not(:first-child),
+  main article {
+    animation: reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+
+/* Lists (staff rows, results) come in one after another. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.stagger-item {
+  animation: rise-in 360ms var(--ease-out) backwards;
+}
+.stagger-item:nth-child(2) { animation-delay: 40ms; }
+.stagger-item:nth-child(3) { animation-delay: 80ms; }
+.stagger-item:nth-child(4) { animation-delay: 120ms; }
+.stagger-item:nth-child(5) { animation-delay: 160ms; }
+.stagger-item:nth-child(6) { animation-delay: 200ms; }
+.stagger-item:nth-child(7) { animation-delay: 240ms; }
+.stagger-item:nth-child(n + 8) { animation-delay: 280ms; }
+
+/* Confirmations (request sent, product saved, price saved). */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.flash-in {
+  animation: pop-in 320ms var(--ease-out) backwards;
+}
+
+/* Small panels that open: mobile menu, toasts. */
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.drop-in {
+  animation: drop-in 240ms var(--ease-out) backwards;
+}
+
+/* A new-request badge asks for attention once, then stays still. */
+@keyframes badge-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(229, 18, 27, 0.6); }
+  100% { box-shadow: 0 0 0 10px rgba(229, 18, 27, 0); }
+}
+.badge-pulse {
+  animation: badge-pulse 1.2s ease-out 3;
+}
+
+/* Buttons sink slightly when pressed; links and controls ease their colour changes.
+   In the base layer, so any transition utility on an element still wins. */
+@layer base {
+  button:not(:disabled):active,
+  a.inline-flex:active {
+    transform: scale(0.98);
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 160ms;
+    transition-timing-function: ease-out;
+  }
+}
+
+/* Printing must show every section, scrolled to or not. */
+@media print {
+  *, *::before, *::after { animation: none !important; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .marquee-track { animation: none; }
   .badge-new::after { display: none; }
-  *, *::before, *::after { transition-duration: 0s !important; }
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0s !important;
+  }
 }

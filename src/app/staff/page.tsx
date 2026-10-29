@@ -57,8 +57,8 @@ async function StaffProducts() {
 
   return (
     <>
-      <StaffHeader profile={profile} />
-      <main className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
+      <StaffHeader profile={profile} active="products" />
+      <main className="page-enter mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="font-display text-4xl font-bold">สินค้า</h1>

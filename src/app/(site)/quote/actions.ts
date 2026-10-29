@@ -1,7 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { attachFile, attachmentError, dbErrorMessage, file, text, type SubmitResult } from "@/lib/form-submit";
+import { contactLabel } from "@/app/staff/quotes/quote-meta";
+import { notifyStaff, siteUrl } from "@/lib/notify";
 import { serviceClient, supabaseConfigured } from "@/lib/supabase";
+import type { ContactMethod } from "@/lib/types";
 
 const allowedFiles = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"];
 
@@ -55,7 +59,24 @@ export async function submitQuoteRequest(form: FormData): Promise<SubmitResult> 
   });
   if (error) return { ok: false, error: dbErrorMessage(error) };
 
-  const reference = (data as { reference: string }).reference;
+  const { id, reference } = data as { id: string; reference: string };
   const attached = attachment ? await attachFile("quote-attachments", reference, attachment) : true;
+
+  // Tell the team once the customer already has their reference.
+  const link = `${await siteUrl()}/staff/quotes/${id}`;
+  const who = [text(form, "contact_name"), text(form, "company")].filter(Boolean).join(" · ");
+  after(() =>
+    notifyStaff({
+      title: `📋 ใบขอราคาใหม่ ${reference}`,
+      lines: [
+        who,
+        `ติดต่อ: ${contactLabel[text(form, "contact_method") as ContactMethod] ?? ""} ${text(form, "contact_value") ?? ""}`,
+        `ปลายทาง: ${[text(form, "city"), text(form, "country")].filter(Boolean).join(", ")}`,
+        items.length > 0 ? `สินค้า ${items.length} รายการ` : "ขอคำแนะนำจัดชุดยิม (ไม่ได้เลือกสินค้า)",
+        ...(attachment ? [attached ? "มีไฟล์แนบ" : "ไฟล์แนบอัปโหลดไม่สำเร็จ"] : []),
+      ],
+      link,
+    }),
+  );
   return { ok: true, reference, attachmentFailed: !attached };
 }

@@ -1,6 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { attachFile, attachmentError, dbErrorMessage, file, text, type SubmitResult } from "@/lib/form-submit";
+import { notifyStaff } from "@/lib/notify";
 import { serviceClient, supabaseConfigured } from "@/lib/supabase";
 
 const allowedFiles = ["image/jpeg", "image/png", "image/webp", "image/heic", "video/mp4", "video/quicktime"];
@@ -25,5 +27,18 @@ export async function submitServiceRequest(form: FormData): Promise<SubmitResult
 
   const reference = (data as { reference: string }).reference;
   const attached = attachment ? await attachFile("service-attachments", reference, attachment) : true;
+
+  after(() =>
+    notifyStaff({
+      title: `🔧 แจ้งซ่อมใหม่ ${reference}`,
+      lines: [
+        `รุ่น: ${text(form, "product_model") ?? ""}${text(form, "unit_code") ? ` · เครื่อง ${text(form, "unit_code")}` : ""}`,
+        `อาการ: ${(text(form, "symptom") ?? "").slice(0, 300)}`,
+        `ติดต่อ: ${text(form, "contact_value") ?? ""}`,
+        ...(attachment ? [attached ? "มีรูป/วิดีโอแนบ" : "ไฟล์แนบอัปโหลดไม่สำเร็จ"] : []),
+        "ดูรายละเอียดใน Supabase → service_requests",
+      ],
+    }),
+  );
   return { ok: true, reference, attachmentFailed: !attached };
 }

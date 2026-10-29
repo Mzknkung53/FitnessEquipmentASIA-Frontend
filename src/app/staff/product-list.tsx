@@ -57,7 +57,7 @@ export function StaffProductList({ products }: { products: StaffProductRow[] }) 
       ) : (
         <ul className="divide-y divide-[#26231f] overflow-hidden rounded-2xl border border-[#26231f] bg-night-2">
           {shown.map((p) => (
-            <li key={p.slug} className="flex items-center gap-4 px-4 py-3">
+            <li key={p.slug} className="stagger-item flex items-center gap-4 px-4 py-3">
               <span className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#1a1816]">
                 {p.thumb ? (
                   <Image src={p.thumb} alt="" fill sizes="56px" className="object-cover" />

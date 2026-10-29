@@ -95,7 +95,7 @@ export function QuoteClient({
   if (sentRef) {
     return (
       <section className="bg-night text-white">
-        <div className="wrap flex max-w-[880px] flex-col gap-7 pt-24 pb-[120px]">
+        <div className="flash-in wrap flex max-w-[880px] flex-col gap-7 pt-24 pb-[120px]">
           <span className="inline-flex items-center gap-2 self-start rounded-full bg-[#16261c] px-3.5 py-1.5 font-semibold text-[#6cc28d]">
             <Icon name="check" /> ได้รับคำขอแล้ว
           </span>

@@ -146,7 +146,7 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
 
   if (saved) {
     return (
-      <div role="status" className="flex flex-col gap-4 rounded-2xl border border-[#1f3a28] bg-[#101c14] p-6">
+      <div role="status" className="flash-in flex flex-col gap-4 rounded-2xl border border-[#1f3a28] bg-[#101c14] p-6">
         <span className="flex items-center gap-2 font-display text-2xl font-bold text-[#6cc28d]">
           <Icon name="check" /> บันทึกแล้ว
         </span>
