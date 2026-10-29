@@ -10,7 +10,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <Suspense fallback={<SiteHeader accountEmail={null} />}>
         <AuthedHeader />
       </Suspense>
-      <main>{children}</main>
+      <main className="page-enter">{children}</main>
       <SiteFooter />
       <ContactLauncher />
     </>

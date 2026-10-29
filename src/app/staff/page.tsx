@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { StaffProductList, type StaffProductRow } from "@/app/staff/product-list";
 import { requireStaff, StaffHeader } from "@/app/staff/staff-header";
+import { PageTransition } from "@/components/page-transition";
 import { Icon } from "@/components/icons";
 import { getCategories } from "@/lib/catalog";
 import { formatMoney } from "@/lib/pricing";
@@ -58,7 +59,8 @@ async function StaffProducts() {
   return (
     <>
       <StaffHeader profile={profile} active="products" />
-      <main className="page-enter mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
+      <PageTransition>
+        <main className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="font-display text-4xl font-bold">สินค้า</h1>
@@ -72,7 +74,8 @@ async function StaffProducts() {
         <p className="text-xs text-muted-night">
           แก้ไขหรือซ่อนสินค้าที่มีอยู่ ตอนนี้ยังต้องทำใน Supabase (Table Editor → products / variants)
         </p>
-      </main>
+        </main>
+      </PageTransition>
     </>
   );
 }

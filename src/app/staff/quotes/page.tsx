@@ -1,7 +1,9 @@
 import { Suspense } from "react";
+import { PageTransition } from "@/components/page-transition";
 import { QuoteList, type QuoteRow } from "@/app/staff/quotes/quote-list";
 import { formatDateTime, type QuoteStatus } from "@/app/staff/quotes/quote-meta";
 import { requireStaff, StaffHeader } from "@/app/staff/staff-header";
+import { isMissingMigration, MigrationNeeded, StaffNotice } from "@/app/staff/staff-notice";
 import { canHandleQuotes } from "@/lib/auth";
 import { formatMoney } from "@/lib/pricing";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -42,14 +44,22 @@ async function Quotes() {
     return (
       <>
         <StaffHeader profile={profile} active="quotes" />
-        <main className="page-enter mx-auto max-w-[1100px] px-4 py-16 text-muted-night sm:px-6">ใบขอราคาเปิดดูได้เฉพาะฝ่ายขายและผู้ดูแลระบบ</main>
+        <StaffNotice title="ใบขอราคาเปิดดูได้เฉพาะฝ่ายขายและผู้ดูแลระบบ" />
       </>
     );
   }
 
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.from("quote_overview").select("*").order("created_at", { ascending: false }).limit(500);
-  if (error) throw new Error(`Loading quotes failed: ${error.message}`);
+  if (error) {
+    if (!isMissingMigration(error)) throw new Error(`Loading quotes failed: ${error.message}`);
+    return (
+      <>
+        <StaffHeader profile={profile} active="quotes" />
+        <MigrationNeeded file="20261029001000_quotation_workflow.sql" />
+      </>
+    );
+  }
 
   const rows: QuoteRow[] = (data as OverviewRow[]).map((q) => ({
     id: q.id,
@@ -76,13 +86,15 @@ async function Quotes() {
   return (
     <>
       <StaffHeader profile={profile} active="quotes" />
-      <main className="page-enter mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="font-display text-4xl font-bold">ใบขอราคา</h1>
-          <p className="text-sm text-muted-night">คำขอจากหน้าเว็บ · กดที่รายการเพื่อใส่ราคาและเปลี่ยนสถานะ</p>
-        </div>
-        <QuoteList rows={rows} />
-      </main>
+      <PageTransition>
+        <main className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
+          <div className="flex flex-col gap-1">
+            <h1 className="font-display text-4xl font-bold">ใบขอราคา</h1>
+            <p className="text-sm text-muted-night">คำขอจากหน้าเว็บ · กดที่รายการเพื่อใส่ราคาและเปลี่ยนสถานะ</p>
+          </div>
+          <QuoteList rows={rows} />
+        </main>
+      </PageTransition>
     </>
   );
 }

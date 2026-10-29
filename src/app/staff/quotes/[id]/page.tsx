@@ -5,6 +5,8 @@ import { QuoteActions } from "@/app/staff/quotes/[id]/quote-actions";
 import { QuotePricing } from "@/app/staff/quotes/[id]/quote-pricing";
 import { contactHref, contactLabel, formatDateTime, quoteStatusMeta, type QuoteStatus } from "@/app/staff/quotes/quote-meta";
 import { requireStaff, StaffHeader } from "@/app/staff/staff-header";
+import { isMissingMigration, MigrationNeeded } from "@/app/staff/staff-notice";
+import { PageTransition } from "@/components/page-transition";
 import { Icon } from "@/components/icons";
 import { canHandleQuotes } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -69,11 +71,19 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
   if (!canHandleQuotes(profile) || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const supabase = await createServerSupabase();
-  const [{ data: quote }, { data: items }, { data: files }] = await Promise.all([
+  const [{ data: quote }, { data: items, error: itemsError }, { data: files }] = await Promise.all([
     supabase.from("quote_requests").select("*").eq("id", id).maybeSingle(),
     supabase.from("quote_item_detail").select("*").eq("quote_id", id).order("id"),
     supabase.from("attachments").select("id, bucket, storage_path, mime_type, size_bytes").eq("quote_id", id),
   ]);
+  if (itemsError && isMissingMigration(itemsError)) {
+    return (
+      <>
+        <StaffHeader profile={profile} active="quotes" />
+        <MigrationNeeded file="20261029001000_quotation_workflow.sql" />
+      </>
+    );
+  }
   if (!quote) notFound();
   const q = quote as QuoteRecord;
 
@@ -97,7 +107,8 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <StaffHeader profile={profile} active="quotes" />
-      <main className="page-enter mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-6 pb-16 sm:px-6">
+      <PageTransition>
+        <main className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-6 pb-16 sm:px-6">
         <Link href="/staff/quotes" className="inline-flex items-center gap-1.5 self-start text-sm text-muted-night hover:text-white">
           <Icon name="arrowLeft" size={14} /> กลับไปรายการใบขอราคา
         </Link>
@@ -188,7 +199,8 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
             </Card>
           </aside>
         </div>
-      </main>
+        </main>
+      </PageTransition>
     </>
   );
 }

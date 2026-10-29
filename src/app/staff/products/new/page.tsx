@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { StaffProductForm } from "@/app/staff/product-form";
 import { requireStaff, StaffHeader } from "@/app/staff/staff-header";
+import { PageTransition } from "@/components/page-transition";
 import { Icon } from "@/components/icons";
 import { getCategories } from "@/lib/catalog";
 
@@ -21,7 +22,8 @@ async function NewProduct() {
   return (
     <>
       <StaffHeader profile={profile} active="products" />
-      <main className="page-enter mx-auto flex max-w-[760px] flex-col gap-6 px-4 pt-6 pb-16 sm:px-6">
+      <PageTransition>
+        <main className="mx-auto flex max-w-[760px] flex-col gap-6 px-4 pt-6 pb-16 sm:px-6">
         <Link href="/staff" className="inline-flex items-center gap-1.5 self-start text-sm text-muted-night hover:text-white">
           <Icon name="arrowLeft" size={14} /> กลับไปรายการสินค้า
         </Link>
@@ -30,7 +32,8 @@ async function NewProduct() {
           <p className="text-sm text-muted-night">กรอก 3 ส่วน แล้วกดบันทึก · ช่องที่มี * ต้องกรอก</p>
         </div>
         <StaffProductForm categories={categories} />
-      </main>
+        </main>
+      </PageTransition>
     </>
   );
 }

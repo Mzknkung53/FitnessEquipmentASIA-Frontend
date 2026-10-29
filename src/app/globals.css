@@ -121,73 +121,98 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Motion. Short and soft: content arrives (fade + small rise), nothing bounces.
-   Everything below is switched off for people who ask for reduced motion.
+   Motion. Smooth, not bouncy: pages hand over (old lifts away, new rises in),
+   content rises in as it scrolls into view. For people whose system asks for
+   reduced motion, everything still fades but nothing moves (end of file).
    --------------------------------------------------------------------------- */
 :root {
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --rise: 28px;
 }
 
-/* Each page arrives: wrapper from (site)/template.tsx and the staff <main>.
-   fill-mode backwards leaves no transform behind, so fixed/sticky children behave. */
+/* Page change (React <ViewTransition>, see components/page-transition.tsx).
+   The old page leaves quickly, the new one arrives a beat later and slower. */
+::view-transition-old(.page-out) {
+  animation: 200ms var(--ease-in) both page-leave;
+}
+::view-transition-new(.page-in) {
+  animation: 460ms var(--ease-out) 120ms both page-arrive;
+}
+@keyframes page-leave {
+  to { opacity: 0; transform: translateY(calc(var(--rise) * -0.5)); filter: blur(2px); }
+}
+@keyframes page-arrive {
+  from { opacity: 0; transform: translateY(var(--rise)); filter: blur(2px); }
+}
+/* The rest of the screen (header, footer) does not cross-fade; headers stay anchored. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-group(site-header),
+::view-transition-group(staff-header) {
+  animation: none;
+  z-index: 50;
+}
+
+/* First load of the site / staff area (the layouts mount once). fill-mode backwards
+   leaves no transform behind, so fixed and sticky children behave. */
 @keyframes page-enter {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(var(--rise)); }
 }
 .page-enter {
-  animation: page-enter 420ms var(--ease-out) backwards;
+  animation: page-enter 560ms var(--ease-out) backwards;
 }
 
-/* Sections and product cards below the fold rise in as they scroll into view.
-   Scroll-driven, so it costs no JavaScript; browsers without support show them as is. */
+/* Sections and product cards rise in as they scroll into view. Scroll-driven, so it
+   follows the scroll wheel and costs no JavaScript; browsers without support show
+   them as they are. */
 @keyframes reveal {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(calc(var(--rise) * 1.6)) scale(0.985); }
 }
 @supports (animation-timeline: view()) {
   main section:not(:first-child),
-  main article {
+  main article,
+  main [data-reveal] {
     animation: reveal linear both;
     animation-timeline: view();
-    animation-range: entry 0% entry 35%;
+    animation-range: entry 0% cover 28%;
   }
 }
 
 /* Lists (staff rows, results) come in one after another. */
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(10px); }
 }
 .stagger-item {
-  animation: rise-in 360ms var(--ease-out) backwards;
+  animation: rise-in 420ms var(--ease-out) backwards;
 }
-.stagger-item:nth-child(2) { animation-delay: 40ms; }
-.stagger-item:nth-child(3) { animation-delay: 80ms; }
-.stagger-item:nth-child(4) { animation-delay: 120ms; }
-.stagger-item:nth-child(5) { animation-delay: 160ms; }
-.stagger-item:nth-child(6) { animation-delay: 200ms; }
-.stagger-item:nth-child(7) { animation-delay: 240ms; }
-.stagger-item:nth-child(n + 8) { animation-delay: 280ms; }
+.stagger-item:nth-child(2) { animation-delay: 45ms; }
+.stagger-item:nth-child(3) { animation-delay: 90ms; }
+.stagger-item:nth-child(4) { animation-delay: 135ms; }
+.stagger-item:nth-child(5) { animation-delay: 180ms; }
+.stagger-item:nth-child(6) { animation-delay: 225ms; }
+.stagger-item:nth-child(7) { animation-delay: 270ms; }
+.stagger-item:nth-child(n + 8) { animation-delay: 315ms; }
 
 /* Confirmations (request sent, product saved, price saved). */
 @keyframes pop-in {
-  from { opacity: 0; transform: scale(0.97); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: scale(0.96); }
 }
 .flash-in {
-  animation: pop-in 320ms var(--ease-out) backwards;
+  animation: pop-in 380ms var(--ease-out) backwards;
 }
 
 /* Small panels that open: mobile menu, toasts. */
 @keyframes drop-in {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(-8px); }
 }
 .drop-in {
-  animation: drop-in 240ms var(--ease-out) backwards;
+  animation: drop-in 260ms var(--ease-out) backwards;
 }
 
-/* A new-request badge asks for attention once, then stays still. */
+/* A new-request badge asks for attention a few times, then stays still. */
 @keyframes badge-pulse {
   0% { box-shadow: 0 0 0 0 rgba(229, 18, 27, 0.6); }
   100% { box-shadow: 0 0 0 10px rgba(229, 18, 27, 0); }
@@ -219,12 +244,18 @@ body {
   *, *::before, *::after { animation: none !important; }
 }
 
+/* Reduced motion (an OS setting, e.g. Windows "Animation effects" off): keep the
+   fades so changes are still easy to follow, drop every movement. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .marquee-track { animation: none; }
+  :root { --rise: 0px; }
+  .marquee-track,
+  .badge-pulse { animation: none; }
   .badge-new::after { display: none; }
-  *, *::before, *::after {
-    animation: none !important;
-    transition-duration: 0s !important;
-  }
+  @keyframes reveal { from { opacity: 0; } }
+  @keyframes pop-in { from { opacity: 0; } }
+  @keyframes page-leave { to { opacity: 0; } }
+  @keyframes page-arrive { from { opacity: 0; } }
+  button:not(:disabled):active,
+  a.inline-flex:active { transform: none; }
 }
