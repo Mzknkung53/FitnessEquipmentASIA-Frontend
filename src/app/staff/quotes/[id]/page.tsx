@@ -3,12 +3,16 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { QuoteActions } from "@/app/staff/quotes/[id]/quote-actions";
 import { QuotePricing } from "@/app/staff/quotes/[id]/quote-pricing";
-import { contactHref, contactLabel, formatDateTime, quoteStatusMeta, type QuoteStatus } from "@/app/staff/quotes/quote-meta";
+import { contactHref, formatDateTime, quoteStatusCls, type QuoteStatus } from "@/app/staff/quotes/quote-meta";
 import { requireStaff, StaffHeader } from "@/app/staff/staff-header";
 import { isMissingMigration, MigrationNeeded } from "@/app/staff/staff-notice";
 import { PageTransition } from "@/components/page-transition";
 import { Icon } from "@/components/icons";
 import { canHandleQuotes } from "@/lib/auth";
+import { StaffI18nProvider } from "@/app/staff/staff-i18n";
+import { fmt } from "@/lib/i18n/config";
+import { getStaffI18n } from "@/lib/i18n/staff";
+import { destinationCountries } from "@/lib/site";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { ContactMethod } from "@/lib/types";
 
@@ -56,18 +60,17 @@ type ItemRecord = {
 
 type AttachmentRecord = { id: string; bucket: string; storage_path: string; mime_type: string; size_bytes: number };
 
-const installationLabel = { yes: "ต้องการติดตั้ง", no: "ไม่ต้องติดตั้ง", unsure: "ยังไม่แน่ใจ" } as const;
-
 export default function QuotePage({ params }: PageProps<"/staff/quotes/[id]">) {
   return (
-    <Suspense fallback={<div className="grid min-h-dvh place-items-center text-muted-night">กำลังโหลด…</div>}>
+    <Suspense fallback={<div className="grid min-h-dvh place-items-center text-muted-night">…</div>}>
       <Quote params={params} />
     </Suspense>
   );
 }
 
 async function Quote({ params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, profile] = await Promise.all([params, requireStaff()]);
+  const [{ id }, profile, { lang, t }] = await Promise.all([params, requireStaff(), getStaffI18n()]);
+  const d = t.detail;
   if (!canHandleQuotes(profile) || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const supabase = await createServerSupabase();
@@ -97,33 +100,34 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
 
   const href = contactHref(q.contact_method, q.contact_value);
   const access = [
-    q.access_upper_floor && "ติดตั้งชั้น 2 ขึ้นไป",
-    q.access_lift && "มีลิฟต์ขนของ",
-    q.access_stairs && "ต้องขนขึ้นบันได",
-    q.access_truck && "รถบรรทุกเข้าถึงได้",
+    q.access_upper_floor && d.accessUpper,
+    q.access_lift && d.accessLift,
+    q.access_stairs && d.accessStairs,
+    q.access_truck && d.accessTruck,
   ].filter(Boolean) as string[];
+  const country = t.countries[destinationCountries.indexOf(q.country)] ?? q.country;
   const closed = ["won", "lost", "cancelled"].includes(q.status);
 
   return (
-    <>
+    <StaffI18nProvider lang={lang} t={t}>
       <StaffHeader profile={profile} active="quotes" />
       <PageTransition>
         <main className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-6 pb-16 sm:px-6">
         <Link href="/staff/quotes" className="inline-flex items-center gap-1.5 self-start text-sm text-muted-night hover:text-white">
-          <Icon name="arrowLeft" size={14} /> กลับไปรายการใบขอราคา
+          <Icon name="arrowLeft" size={14} /> {d.back}
         </Link>
 
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1.5">
             <span className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${quoteStatusMeta[q.status].cls}`}>{quoteStatusMeta[q.status].label}</span>
-              <span className="text-sm text-muted-night">ส่งเมื่อ {formatDateTime(q.created_at)}</span>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${quoteStatusCls[q.status]}`}>{t.quoteStatus[q.status]}</span>
+              <span className="text-sm text-muted-night">{fmt(d.sentAt, { date: formatDateTime(q.created_at, lang) })}</span>
             </span>
             <h1 className="font-mono text-3xl font-bold sm:text-4xl">{q.reference}</h1>
           </div>
           <QuoteActions quoteId={q.id} status={q.status} />
         </div>
-        {q.status === "lost" && q.lost_reason && <p className="rounded-lg bg-[#262422] px-4 py-3 text-sm">เหตุผลที่ไม่สำเร็จ: {q.lost_reason}</p>}
+        {q.status === "lost" && q.lost_reason && <p className="rounded-lg bg-[#262422] px-4 py-3 text-sm">{fmt(d.lostReason, { reason: q.lost_reason })}</p>}
 
         <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
           <QuotePricing
@@ -133,7 +137,7 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
             closed={closed}
             vatRate={q.quoted_total_thb != null ? Number(q.vat_rate) : q.country === "ไทย" ? 7 : 0}
             totalThb={q.quoted_total_thb != null ? String(q.quoted_total_thb) : ""}
-            quotedAt={q.quoted_at ? formatDateTime(q.quoted_at) : null}
+            quotedAt={q.quoted_at ? formatDateTime(q.quoted_at, lang) : null}
             items={((items ?? []) as ItemRecord[]).map((i) => ({
               id: i.id,
               sku: i.sku,
@@ -148,11 +152,11 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
           />
 
           <aside className="flex flex-col gap-4">
-            <Card title="ลูกค้า">
+            <Card title={d.customer}>
               <p className="text-lg font-semibold">{q.contact_name}</p>
               {q.company && <p className="text-muted-night">{q.company}</p>}
               <p className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-night">{contactLabel[q.contact_method]}:</span>
+                <span className="text-muted-night">{t.contact[q.contact_method]}:</span>
                 {href ? (
                   <a href={href} target="_blank" rel="noreferrer" className="font-semibold underline-offset-2 hover:underline">
                     {q.contact_value}
@@ -163,23 +167,23 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
               </p>
             </Card>
 
-            <Card title="ปลายทางและการติดตั้ง">
-              <Row label="ปลายทาง" value={[q.city, q.postcode, q.country].filter(Boolean).join(" ")} />
-              <Row label="ติดตั้ง" value={installationLabel[q.installation]} />
-              {access.length > 0 && <Row label="การขนเข้า" value={access.join(" · ")} />}
-              {q.target_date && <Row label="ต้องการรับ" value={q.target_date} />}
-              {q.budget_text && <Row label="งบประมาณ" value={q.budget_text} />}
+            <Card title={d.destinationCard}>
+              <Row label={d.destination} value={[q.city, q.postcode, country].filter(Boolean).join(" ")} />
+              <Row label={d.install} value={d.installation[q.installation]} />
+              {access.length > 0 && <Row label={d.access} value={access.join(" · ")} />}
+              {q.target_date && <Row label={d.targetDate} value={q.target_date} />}
+              {q.budget_text && <Row label={d.budget} value={q.budget_text} />}
             </Card>
 
             {q.message && (
-              <Card title="ข้อความจากลูกค้า">
+              <Card title={d.message}>
                 <p className="whitespace-pre-line">{q.message}</p>
               </Card>
             )}
 
-            <Card title={`ไฟล์แนบ (${attachments.length})`}>
+            <Card title={fmt(d.attachments, { n: attachments.length })}>
               {attachments.length === 0 ? (
-                <p className="text-muted-night">ไม่มีไฟล์แนบ</p>
+                <p className="text-muted-night">{d.noAttachments}</p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {attachments.map((a, n) => (
@@ -187,10 +191,10 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
                       {a.url ? (
                         <a href={a.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 font-semibold underline-offset-2 hover:underline">
                           <Icon name={a.mime_type.startsWith("image/") ? "image" : "arrowUpRight"} size={16} />
-                          ไฟล์ {n + 1} · {a.mime_type === "application/pdf" ? "PDF" : a.mime_type.split("/")[1].toUpperCase()} · {(a.size_bytes / 1024 / 1024).toFixed(1)} MB
+                          {fmt(d.file, { n: n + 1 })} · {a.mime_type === "application/pdf" ? "PDF" : a.mime_type.split("/")[1].toUpperCase()} · {fileSize(a.size_bytes)}
                         </a>
                       ) : (
-                        <span className="text-muted-night">เปิดไฟล์ไม่ได้ (ไม่มีสิทธิ์อ่าน)</span>
+                        <span className="text-muted-night">{d.cantOpen}</span>
                       )}
                     </li>
                   ))}
@@ -201,8 +205,13 @@ async function Quote({ params }: { params: Promise<{ id: string }> }) {
         </div>
         </main>
       </PageTransition>
-    </>
+    </StaffI18nProvider>
   );
+}
+
+/** KB under 1 MB, so a small PDF doesn't read as "0.0 MB". */
+function fileSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { ProductCard } from "@/components/product-card";
-import { productPrice, productStatus, statusMeta } from "@/lib/pricing";
+import { SelectMenu } from "@/components/select-menu";
+import { categoryName } from "@/lib/i18n/names";
+import { productPrice, productStatus, statusDot } from "@/lib/pricing";
 import { shop, useShop } from "@/lib/shop-store";
 import type { Category, Product, StockStatus } from "@/lib/types";
 
@@ -12,6 +15,8 @@ type Sort = "new" | "picks" | "price";
 const ALL_STATUSES: StockStatus[] = ["ready", "preorder", "import", "out"];
 
 export function ProductBrowser({ products, categories }: { products: Product[]; categories: Category[] }) {
+  const { lang, t, href } = useI18n();
+  const copy = t.products;
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -40,7 +45,8 @@ export function ProductBrowser({ products, categories }: { products: Product[]; 
     return list;
   }, [products, cat, statuses, pricedOnly, setting, sort]);
 
-  const title = cat === "all" ? "สินค้าทั้งหมด" : (categories.find((c) => c.id === cat)?.nameTh ?? "สินค้า");
+  const current = categories.find((c) => c.id === cat);
+  const title = cat === "all" ? copy.allProducts : current ? categoryName(current, lang, t) : copy.fallbackTitle;
   const reset = () => {
     setStatuses(ALL_STATUSES);
     setPricedOnly(false);
@@ -61,16 +67,16 @@ export function ProductBrowser({ products, categories }: { products: Product[]; 
               <span className="text-brand">.</span>
             </h1>
             <span className="font-display text-xl" aria-live="polite">
-              <span className="hollow-thin text-[56px] leading-none font-bold text-ink">{String(items.length).padStart(2, "0")}</span> รายการ
+              <span className="hollow-thin text-[56px] leading-none font-bold text-ink">{String(items.length).padStart(2, "0")}</span> {t.common.items}
             </span>
           </div>
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-8" role="group" aria-label="เลือกหมวดสินค้า">
-            {[{ id: "all", nameTh: "ทั้งหมด" }, ...categories].map((c, i) => {
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-8" role="group" aria-label={copy.pickCategory}>
+            {[{ id: "all", name: copy.all }, ...categories.map((c) => ({ id: c.id, name: categoryName(c, lang, t) }))].map((c, i) => {
               const on = cat === c.id;
               return (
                 <button key={c.id} type="button" aria-pressed={on} onClick={() => pickCat(c.id)} className={`flex min-h-[88px] w-[136px] shrink-0 flex-col justify-between gap-3 rounded-md px-4 py-3.5 text-left text-white transition-colors sm:min-h-[104px] sm:w-auto ${on ? "bg-brand" : "bg-night hover:bg-[#2a2724]"}`}>
                   <span className="font-mono text-xs opacity-70">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="font-display text-[17px] leading-tight font-semibold">{c.nameTh}</span>
+                  <span className="font-display text-[17px] leading-tight font-semibold">{c.name}</span>
                 </button>
               );
             })}
@@ -79,28 +85,28 @@ export function ProductBrowser({ products, categories }: { products: Product[]; 
       </section>
 
       <div className="wrap flex flex-wrap items-start gap-10 pt-10 pb-24">
-        <aside aria-label="ตัวกรอง" className="flex max-w-full flex-[1_1_240px] flex-col gap-7 lg:sticky lg:top-[108px]">
-          <Filter title="สถานะสินค้า">
+        <aside aria-label={copy.filters} className="flex max-w-full flex-[1_1_240px] flex-col gap-7 lg:sticky lg:top-[108px]">
+          <Filter title={copy.stockStatus}>
             {ALL_STATUSES.map((s) => (
               <label key={s} className="flex min-h-[42px] cursor-pointer items-center gap-3 text-[15px]">
                 <input type="checkbox" className="size-5 accent-ink" checked={statuses.includes(s)} onChange={() => setStatuses(statuses.includes(s) ? statuses.filter((x) => x !== s) : [...statuses, s])} />
-                <span className={`size-2 rounded-full ${statusMeta[s].dot}`} />
-                {statusMeta[s].label}
+                <span className={`size-2 rounded-full ${statusDot[s]}`} />
+                {t.status[s]}
               </label>
             ))}
           </Filter>
-          <Filter title="ราคา">
+          <Filter title={copy.price}>
             <label className="flex min-h-[42px] cursor-pointer items-center gap-3 text-[15px]">
               <input type="checkbox" className="size-5 accent-ink" checked={pricedOnly} onChange={() => setPricedOnly(!pricedOnly)} />
-              เฉพาะสินค้าที่แสดงราคา
+              {copy.pricedOnly}
             </label>
           </Filter>
-          <Filter title="เหมาะสำหรับ">
+          <Filter title={copy.suitableFor}>
             {(
               [
-                ["all", "ทั้งหมด"],
-                ["home", "ใช้ที่บ้าน"],
-                ["commercial", "ยิมเชิงพาณิชย์"],
+                ["all", copy.all],
+                ["home", t.setting.home],
+                ["commercial", t.setting.commercial],
               ] as const
             ).map(([v, l]) => (
               <label key={v} className="flex min-h-[42px] cursor-pointer items-center gap-3 text-[15px]">
@@ -109,21 +115,21 @@ export function ProductBrowser({ products, categories }: { products: Product[]; 
               </label>
             ))}
           </Filter>
-          <Link href="/quote" className="flex flex-col gap-2 rounded-xl bg-night p-[22px] text-white">
+          <Link href={href("/quote")} className="flex flex-col gap-2 rounded-xl bg-night p-[22px] text-white">
             <span className="eyebrow text-brand">Gym projects</span>
-            <span className="font-display text-[22px] leading-tight font-semibold">หาไม่เจอ หรืออยากจัดทั้งยิม?</span>
-            <span className="text-sm text-muted-night">ส่งรายการหรือขนาดพื้นที่ ทีมงานช่วยเลือกและเสนอราคา</span>
-            <span className="pt-1 font-semibold">ขอคำแนะนำ →</span>
+            <span className="font-display text-[22px] leading-tight font-semibold">{copy.gymBoxTitle}</span>
+            <span className="text-sm text-muted-night">{copy.gymBoxBody}</span>
+            <span className="pt-1 font-semibold">{copy.gymBoxLink}</span>
           </Link>
         </aside>
 
-        <section aria-label="รายการสินค้า" className="flex min-w-0 flex-[999_1_640px] flex-col gap-6">
+        <section aria-label={copy.list} className="flex min-w-0 flex-[999_1_640px] flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-1 rounded-full bg-stage p-1" role="group" aria-label="สกุลเงิน">
+            <div className="flex gap-1 rounded-full bg-stage p-1" role="group" aria-label={copy.currency}>
               {(
                 [
                   ["THB", "฿ THB"],
-                  ["USD", "US$ ประมาณ"],
+                  ["USD", copy.usdApprox],
                 ] as const
               ).map(([c, l]) => (
                 <button key={c} type="button" aria-pressed={currency === c} onClick={() => shop.setCurrency(c)} className={`min-h-10 rounded-full px-3.5 text-sm font-semibold ${currency === c ? "bg-ink text-white" : ""}`}>
@@ -131,14 +137,18 @@ export function ProductBrowser({ products, categories }: { products: Product[]; 
                 </button>
               ))}
             </div>
-            <label className="flex items-center gap-2.5 text-sm">
-              <span className="text-muted">เรียงตาม</span>
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="min-h-[46px] rounded-lg border border-control bg-white px-3.5 text-[15px]">
-                <option value="new">สินค้าเข้าใหม่ก่อน</option>
-                <option value="picks">ทีมงานแนะนำ</option>
-                <option value="price">ราคา ต่ำไปสูง</option>
-              </select>
-            </label>
+            <SelectMenu
+              label={t.sort.label}
+              value={sort}
+              onChange={setSort}
+              options={
+                [
+                  ["new", t.sort.new],
+                  ["picks", t.sort.picks],
+                  ["price", t.sort.price],
+                ] as const
+              }
+            />
           </div>
 
           {items.length > 0 ? (
@@ -149,14 +159,14 @@ export function ProductBrowser({ products, categories }: { products: Product[]; 
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3.5 rounded-2xl bg-stage px-6 py-[72px] text-center">
-              <span className="font-display text-[32px] font-bold">ไม่พบสินค้าตามตัวกรอง</span>
-              <span className="max-w-[440px] text-muted">ลองล้างตัวกรอง หรือส่งคำถามให้ทีมงาน เราอาจสั่งผลิตหรือนำเข้าสินค้าที่คุณต้องการได้</span>
+              <span className="font-display text-[32px] font-bold">{copy.emptyTitle}</span>
+              <span className="max-w-[440px] text-muted">{copy.emptyBody}</span>
               <div className="flex flex-wrap justify-center gap-2.5">
                 <button type="button" onClick={reset} className="min-h-[46px] rounded-md bg-ink px-6 font-semibold text-white">
-                  ล้างตัวกรอง
+                  {copy.clearFilters}
                 </button>
-                <Link href="/quote" className="grid min-h-[46px] place-items-center rounded-md border-[1.5px] border-ink bg-white px-6 font-semibold">
-                  สอบถามสินค้า
+                <Link href={href("/quote")} className="grid min-h-[46px] place-items-center rounded-md border-[1.5px] border-ink bg-white px-6 font-semibold">
+                  {copy.ask}
                 </Link>
               </div>
             </div>

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { StaffLangSwitch } from "@/app/staff/staff-i18n";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { getAuthProfile } from "@/lib/auth";
+import { fmt, localePath } from "@/lib/i18n/config";
+import { getStaffI18n } from "@/lib/i18n/staff";
 import { authConfigured } from "@/lib/supabase/env";
 
 export const metadata = {
-  title: "เข้าสู่ระบบพนักงาน",
+  title: "Staff · เข้าสู่ระบบพนักงาน",
   robots: { index: false, follow: false },
 };
 
@@ -16,7 +19,7 @@ export default function StaffLoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   return (
-    <Suspense fallback={<div className="grid min-h-dvh place-items-center text-muted-night">กำลังโหลด…</div>}>
+    <Suspense fallback={<div className="grid min-h-dvh place-items-center text-muted-night">…</div>}>
       <StaffLogin searchParams={searchParams} />
     </Suspense>
   );
@@ -27,40 +30,37 @@ async function StaffLogin({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const params = await searchParams;
-  const profile = await getAuthProfile();
+  const [params, profile, { lang, t }] = await Promise.all([searchParams, getAuthProfile(), getStaffI18n()]);
   if (profile?.isStaff) redirect("/staff");
+  const l = t.login;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-6 py-16">
       <div className="flex flex-col gap-3">
-        <p className="eyebrow text-brand">Staff</p>
-        <h1 className="font-display text-4xl font-bold tracking-[-0.02em]">เข้าสู่ระบบพนักงาน</h1>
+        <div className="flex items-center justify-between gap-4">
+          <p className="eyebrow text-brand">Staff</p>
+          <StaffLangSwitch lang={lang} label={t.shell.language} />
+        </div>
+        <h1 className="font-display text-4xl font-bold tracking-[-0.02em]">{l.title}</h1>
         <p className="text-[15px] text-muted-night">
-          ใช้ Google ของบัญชีที่ได้รับสิทธิ์แล้วเท่านั้น (เช่น admin) —{" "}
-          <Link href="/" className="text-white underline-offset-2 hover:underline">
-            กลับหน้าร้านลูกค้า
+          {l.intro}{" "}
+          <Link href={localePath(lang, "/")} className="text-white underline-offset-2 hover:underline">
+            {l.backToShop}
           </Link>
           {" · "}
-          <Link href="/login" className="text-white underline-offset-2 hover:underline">
-            login ลูกค้า
+          <Link href={localePath(lang, "/login")} className="text-white underline-offset-2 hover:underline">
+            {l.customerLogin}
           </Link>
         </p>
       </div>
 
       {!authConfigured ? (
-        <p className="text-sm text-brand">ยังไม่ได้ตั้งค่า Supabase</p>
+        <p className="text-sm text-brand">{l.notConfigured}</p>
       ) : (
         <div className="rounded-xl border border-[#2a2724] bg-[#151311] p-5">
-          <GoogleSignInButton next="/staff" label="เข้าสู่ระบบพนักงานด้วย Google" />
-          {params.error === "forbidden" && (
-            <p className="mt-4 text-sm text-[#f0a0a0]">บัญชีนี้ยังไม่มีสิทธิ์พนักงาน ติดต่อแอดมินให้เพิ่มใน allowlist</p>
-          )}
-          {profile && !profile.isStaff && (
-            <p className="mt-4 text-sm text-[#f0a0a0]">
-              ล็อกอินอยู่ที่ {profile.email} แต่ยังไม่ใช่พนักงาน — ใช้บัญชี Google ที่ได้รับสิทธิ์ หรือออกจากระบบแล้วลองใหม่
-            </p>
-          )}
+          <GoogleSignInButton next="/staff" label={l.button} busyLabel={l.opening} errorLabel={l.error} />
+          {params.error === "forbidden" && <p className="mt-4 text-sm text-[#f0a0a0]">{l.forbidden}</p>}
+          {profile && !profile.isStaff && <p className="mt-4 text-sm text-[#f0a0a0]">{fmt(l.notStaff, { email: profile.email ?? "" })}</p>}
         </div>
       )}
     </div>

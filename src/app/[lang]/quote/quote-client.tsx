@@ -4,22 +4,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
-import { submitQuoteRequest } from "@/app/(site)/quote/actions";
+import { submitQuoteRequest } from "@/app/[lang]/quote/actions";
+import { useI18n } from "@/components/i18n-provider";
 import { Icon } from "@/components/icons";
 import { Pictogram, StatusChip } from "@/components/product-bits";
 import { QtyStepper } from "@/components/qty-stepper";
+import { fmt } from "@/lib/i18n/config";
 import { formatMoney, VAT_RATE } from "@/lib/pricing";
 import { shop, useShop } from "@/lib/shop-store";
 import { destinationCountries } from "@/lib/site";
 import type { ContactMethod, Product } from "@/lib/types";
 
-const methods: { id: ContactMethod; label: string; field: string }[] = [
-  { id: "line", label: "LINE", field: "LINE ID" },
-  { id: "wechat", label: "WeChat", field: "WeChat ID" },
-  { id: "whatsapp", label: "WhatsApp", field: "หมายเลข WhatsApp" },
-  { id: "phone", label: "โทรศัพท์", field: "เบอร์โทรศัพท์" },
-  { id: "email", label: "อีเมล", field: "อีเมล" },
-];
+const methodIds: ContactMethod[] = ["line", "wechat", "whatsapp", "phone", "email"];
 
 const input = "min-h-[52px] w-full rounded-lg border border-control bg-white px-3.5 text-base font-normal";
 
@@ -32,6 +28,8 @@ export function QuoteClient({
   accountEmail?: string | null;
   accountName?: string | null;
 }) {
+  const { lang, t, href } = useI18n();
+  const q = t.quote;
   const { quote, currency, ready } = useShop();
   const params = useSearchParams();
   const [method, setMethod] = useState<ContactMethod>(accountEmail ? "email" : "line");
@@ -39,8 +37,10 @@ export function QuoteClient({
   const [contact, setContact] = useState(accountEmail ?? "");
   const [city, setCity] = useState("");
   const [message, setMessage] = useState(() => {
-    // Prefill from the "เริ่มวางแผนยิมของคุณ" form on the home page.
-    const parts = [params.get("space"), params.get("area") && `พื้นที่ ${params.get("area")} ตร.ม.`, params.get("budget") && `งบประมาณ ${params.get("budget")}`].filter(Boolean);
+    // Prefill from the "plan your gym" form on the home page.
+    const area = params.get("area");
+    const budget = params.get("budget");
+    const parts = [params.get("space"), area && fmt(q.prefillArea, { area }), budget && fmt(q.prefillBudget, { budget })].filter(Boolean);
     return parts.join(" · ");
   });
   const [tried, setTried] = useState(false);
@@ -59,7 +59,7 @@ export function QuoteClient({
 
   const priced = lines.filter((l) => l.variant.priceThb != null);
   const subtotal = priced.reduce((s, l) => s + (l.variant.priceThb ?? 0) * l.qty, 0);
-  const m = methods.find((x) => x.id === method)!;
+  const m = q.methods[method];
   const errors = {
     name: tried && !name.trim(),
     contact: tried && !contact.trim(),
@@ -75,6 +75,7 @@ export function QuoteClient({
       return;
     }
     const form = new FormData(e.currentTarget);
+    form.set("lang", lang);
     form.set("items", JSON.stringify(lines.map((l) => ({ sku: l.sku, qty: l.qty, note: l.note }))));
     setSendError(null);
     // Saves the request in Supabase. It never charges money or reserves stock.
@@ -90,40 +91,40 @@ export function QuoteClient({
     });
   };
 
-  if (!ready) return <div className="wrap min-h-[70vh] py-24 text-muted" aria-busy="true">กำลังโหลดรายการขอราคา…</div>;
+  if (!ready) return <div className="wrap min-h-[70vh] py-24 text-muted" aria-busy="true">{q.loading}</div>;
 
   if (sentRef) {
     return (
       <section className="bg-night text-white">
         <div className="flash-in wrap flex max-w-[880px] flex-col gap-7 pt-24 pb-[120px]">
           <span className="inline-flex items-center gap-2 self-start rounded-full bg-[#16261c] px-3.5 py-1.5 font-semibold text-[#6cc28d]">
-            <Icon name="check" /> ได้รับคำขอแล้ว
+            <Icon name="check" className="tick-draw" /> {q.received}
           </span>
           <h1 className="font-display text-[clamp(40px,6vw,64px)] leading-[1.05] font-bold tracking-[-0.02em]">
-            ขอบคุณครับ
+            {q.thanks}
             <br />
-            <span className="hollow text-white">ทีมงานได้รับคำขอแล้ว</span>
+            <span className="hollow text-white">{q.thanksLine2}</span>
           </h1>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-muted-night">เลขอ้างอิง</span>
-            <span className="rounded-md bg-[#1f1d1a] px-3.5 py-1.5 font-mono text-xl">{sentRef}</span>
+            <span className="text-muted-night">{q.reference}</span>
+            <span className="bump rounded-md bg-[#1f1d1a] px-3.5 py-1.5 font-mono text-xl [animation-delay:250ms]">{sentRef}</span>
           </div>
           {attachmentFailed && (
             <span className="flex items-center gap-2 text-[#e3b25a]">
-              <Icon name="alert" /> แนบไฟล์ไม่สำเร็จ กรุณาส่งไฟล์ให้ทีมงานทาง {m.label} พร้อมเลขอ้างอิงนี้
+              <Icon name="alert" /> {fmt(q.attachmentFailed, { method: m.label })}
             </span>
           )}
           <ol className="flex flex-col border-b border-night-line">
-            {["ทีมงานตรวจสอบสินค้า สต็อก ค่าขนส่ง ส่วนลด และการติดตั้ง", `ติดต่อกลับทาง ${m.label} เพื่อยืนยันรายละเอียด`, "ส่งใบเสนอราคาฉบับสุดท้าย ก่อนมีการชำระเงินใด ๆ"].map((t, i) => (
-              <li key={t} className="flex gap-5 border-t border-night-line py-[18px]">
+            {q.nextSteps.map((step, i) => (
+              <li key={step} className="flex gap-5 border-t border-night-line py-[18px]">
                 <span className="w-10 font-display text-[22px] font-bold text-brand">0{i + 1}</span>
-                {t}
+                {fmt(step, { method: m.label })}
               </li>
             ))}
           </ol>
-          <span className="text-muted-night">ยังไม่มีการเรียกเก็บเงินหรือจองสินค้า · ระยะเวลาตอบกลับ: [รอยืนยัน]</span>
-          <Link href="/products" className="inline-flex min-h-14 items-center self-start rounded-md bg-white px-7 font-display text-lg font-semibold text-ink">
-            กลับไปเลือกสินค้า
+          <span className="text-muted-night">{q.noChargeYet}</span>
+          <Link href={href("/products")} className="inline-flex min-h-14 items-center self-start rounded-md bg-white px-7 font-display text-lg font-semibold text-ink">
+            {q.backToProducts}
           </Link>
         </div>
       </section>
@@ -137,28 +138,28 @@ export function QuoteClient({
           <div className="flex max-w-[760px] flex-col gap-3">
             <span className="eyebrow text-brand">Quote request</span>
             <h1 className="font-display text-[clamp(44px,7vw,72px)] leading-none font-bold tracking-[-0.025em]">
-              รายการขอราคา<span className="text-brand">.</span>
+              {q.title}<span className="text-brand">.</span>
             </h1>
-            <p className="text-lg text-ink-2">รวมสินค้าทั้งที่มีราคาและยังไม่มีราคาในคำขอเดียว ทีมงานตรวจสอบสต็อก ค่าขนส่ง ส่วนลด และการติดตั้งก่อนส่งใบเสนอราคา</p>
+            <p className="text-lg text-ink-2">{q.intro}</p>
           </div>
           <span className="font-display text-xl">
-            <span className="hollow-thin text-[64px] leading-none font-bold text-ink">{String(lines.length).padStart(2, "0")}</span> รายการ
+            <span className="hollow-thin text-[64px] leading-none font-bold text-ink">{String(lines.length).padStart(2, "0")}</span> {t.common.items}
           </span>
         </div>
       </section>
 
       <form onSubmit={submit} noValidate className="wrap flex flex-wrap items-start gap-10 pt-12 pb-24">
         <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-14">
-          <section aria-label="สินค้าในรายการ" className="flex flex-col border-t-2 border-ink">
+          <section aria-label={q.itemsInList} className="flex flex-col border-t-2 border-ink">
             {advisoryOnly && (
               <div className="flex flex-col gap-3 border-b border-line py-8">
-                <span className="font-display text-2xl font-semibold">ยังไม่มีสินค้าในรายการ</span>
-                <span className="text-muted">ส่งคำขอได้เลยโดยบอกขนาดพื้นที่และงบประมาณ ทีมงานจะช่วยจัดชุดอุปกรณ์ให้ หรือ <Link href="/products" className="font-semibold text-ink underline">เลือกสินค้าก่อน</Link></span>
+                <span className="font-display text-2xl font-semibold">{q.emptyTitle}</span>
+                <span className="text-muted">{q.emptyBody} <Link href={href("/products")} className="font-semibold text-ink underline">{q.pickFirst}</Link></span>
               </div>
             )}
             {lines.map((l) => (
               <div key={l.sku} className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-x-6 gap-y-4 border-b border-line py-6 sm:grid-cols-[132px_minmax(0,1fr)_auto]">
-                <Link href={`/products/${l.slug}?v=${l.sku}`} className="grid aspect-square place-items-center overflow-hidden rounded-xl bg-stage">
+                <Link href={href(`/products/${l.slug}?v=${l.sku}`)} className="grid aspect-square place-items-center overflow-hidden rounded-xl bg-stage">
                   {l.product.image ? (
                     <Image src={l.product.image.src} alt={l.product.image.alt} width={l.product.image.width} height={l.product.image.height} sizes="132px" className="blend-stage h-[88%] w-[88%] object-contain" />
                   ) : l.product.pictogram ? (
@@ -172,13 +173,13 @@ export function QuoteClient({
                     <span className="font-mono text-muted">{l.sku}</span>
                     <StatusChip status={l.variant.status} className="!px-0 !shadow-none" />
                   </span>
-                  <Link href={`/products/${l.slug}?v=${l.sku}`} className="font-display text-[22px] leading-tight font-semibold hover:underline">
+                  <Link href={href(`/products/${l.slug}?v=${l.sku}`)} className="font-display text-[22px] leading-tight font-semibold hover:underline">
                     {l.product.nameEn}
                   </Link>
                   <span className="text-sm text-muted">{l.variant.label}</span>
                   <label className="flex max-w-[440px] flex-col gap-1 pt-1 text-[13px] text-muted">
-                    หมายเหตุ (ไม่บังคับ)
-                    <input value={l.note ?? ""} onChange={(e) => shop.setQuoteNote(l.sku, e.target.value)} placeholder="เช่น ต้องการสีอื่น หรือขนาดพิเศษ" className="min-h-[42px] rounded-lg border border-control px-3 text-sm text-ink" />
+                    {q.note}
+                    <input value={l.note ?? ""} onChange={(e) => shop.setQuoteNote(l.sku, e.target.value)} placeholder={q.noteExample} className="min-h-[42px] rounded-lg border border-control px-3 text-sm text-ink" />
                   </label>
                 </div>
                 <div className="col-span-2 flex flex-wrap items-center justify-between gap-2.5 sm:col-span-1 sm:min-w-[180px] sm:flex-col sm:items-end">
@@ -190,152 +191,154 @@ export function QuoteClient({
                       </span>
                     </span>
                   ) : (
-                    <span className="rounded-full bg-pending-bg px-3 py-1 text-sm font-semibold text-pending">รอเสนอราคา</span>
+                    <span className="rounded-full bg-pending-bg px-3 py-1 text-sm font-semibold text-pending">{q.awaitingPrice}</span>
                   )}
-                  <QtyStepper value={l.qty} onChange={(n) => shop.setQuoteQty(l.sku, n)} label={`จำนวน ${l.product.nameEn}`} />
+                  <QtyStepper value={l.qty} onChange={(n) => shop.setQuoteQty(l.sku, n)} label={fmt(q.qtyOf, { name: l.product.nameEn })} />
                   <button type="button" onClick={() => shop.removeFromQuote(l.sku)} className="min-h-9 text-sm text-muted underline underline-offset-4">
-                    นำออก
+                    {q.remove}
                   </button>
                 </div>
               </div>
             ))}
-            <Link href="/products" className="pt-[18px] font-semibold">
-              + เพิ่มสินค้าอื่น
+            <Link href={href("/products")} className="pt-[18px] font-semibold">
+              {q.addMore}
             </Link>
           </section>
 
           {errorCount > 0 && (
             <div role="alert" className="flex items-center gap-2.5 rounded-[10px] bg-[#fde8e9] px-[18px] py-4 font-semibold text-[#c8101a]">
-              <Icon name="alert" /> กรอกข้อมูลที่จำเป็นอีก {errorCount} ช่อง เพื่อให้ทีมงานติดต่อกลับได้
+              <Icon name="alert" /> {fmt(q.missingFields, { n: errorCount })}
             </div>
           )}
 
-          <Section n="01" title="ข้อมูลติดต่อ">
+          <Section n="01" title={q.contactSection}>
             {accountEmail ? (
               <p className="rounded-lg bg-stage px-4 py-3 text-sm text-muted">
-                เข้าสู่ระบบแล้วที่ <span className="font-semibold text-ink">{accountEmail}</span> — ทีมงานจะใช้เมลนี้ติดต่อกลับได้{" "}
-                <Link href="/account" className="font-semibold text-ink underline-offset-2 hover:underline">
-                  ดูบัญชี
+                {q.signedInAs} <span className="font-semibold text-ink">{accountEmail}</span> {q.signedInNote}{" "}
+                <Link href={href("/account")} className="font-semibold text-ink underline-offset-2 hover:underline">
+                  {q.viewAccount}
                 </Link>
               </p>
             ) : (
               <p className="rounded-lg bg-stage px-4 py-3 text-sm text-muted">
-                ต้องการให้ทีมงานรู้เมลติดต่ออัตโนมัติ?{" "}
-                <Link href="/login?next=/quote" className="font-semibold text-ink underline-offset-2 hover:underline">
-                  เข้าสู่ระบบด้วย Google
+                {q.wantAutoEmail}{" "}
+                <Link href={href(`/login?next=${encodeURIComponent(href("/quote"))}`)} className="font-semibold text-ink underline-offset-2 hover:underline">
+                  {q.signInGoogle}
                 </Link>
               </p>
             )}
             <div className="grid gap-[18px] md:grid-cols-2">
-              <Field label="ชื่อผู้ติดต่อ" error={errors.name ? "กรอกชื่อผู้ติดต่อ" : undefined}>
+              <Field label={q.contactName} error={errors.name ? q.contactNameError : undefined}>
                 <input name="contact_name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" aria-invalid={errors.name} className={`${input} ${errors.name ? "border-2 border-[#c8101a]" : ""}`} />
               </Field>
-              <Field label="บริษัท / ชื่อยิม" optional>
+              <Field label={q.company} optional>
                 <input name="company" autoComplete="organization" className={input} />
               </Field>
             </div>
             <fieldset className="flex flex-col gap-2">
-              <legend className="pb-2 text-sm font-semibold">ช่องทางที่สะดวกให้ติดต่อกลับ</legend>
+              <legend className="pb-2 text-sm font-semibold">{q.preferredChannel}</legend>
               <div className="flex flex-wrap gap-2">
-                {methods.map((x) => (
-                  <label key={x.id} className={`inline-flex min-h-[46px] cursor-pointer items-center gap-2 rounded-full border px-4 text-[15px] font-medium ${method === x.id ? "border-ink bg-ink text-white" : "border-[#d6d2cb] bg-white"}`}>
-                    <input type="radio" name="contact_method" value={x.id} checked={method === x.id} onChange={() => setMethod(x.id)} className="size-[18px] accent-white" />
-                    {x.label}
+                {methodIds.map((id) => (
+                  <label key={id} className={`inline-flex min-h-[46px] cursor-pointer items-center gap-2 rounded-full border px-4 text-[15px] font-medium ${method === id ? "border-ink bg-ink text-white" : "border-[#d6d2cb] bg-white"}`}>
+                    <input type="radio" name="contact_method" value={id} checked={method === id} onChange={() => setMethod(id)} className="size-[18px] accent-white" />
+                    {q.methods[id].label}
                   </label>
                 ))}
               </div>
             </fieldset>
             <div className="grid gap-[18px] md:grid-cols-2">
-              <Field label={m.field} error={errors.contact ? `กรอก${m.field} เพื่อให้ทีมงานติดต่อกลับได้` : undefined}>
+              <Field label={m.field} error={errors.contact ? fmt(q.contactError, { field: m.field }) : undefined}>
                 <input name="contact_value" value={contact} onChange={(e) => setContact(e.target.value)} aria-invalid={errors.contact} className={`${input} ${errors.contact ? "border-2 border-[#c8101a]" : ""}`} />
               </Field>
             </div>
           </Section>
 
-          <Section n="02" title="ปลายทางและการติดตั้ง">
+          <Section n="02" title={q.destinationSection}>
             <div className="grid gap-[18px] md:grid-cols-2">
-              <Field label="ประเทศปลายทาง" hint="ภาษาบนเว็บไม่เกี่ยวกับประเทศปลายทาง">
+              <Field label={q.country} hint={q.countryHint}>
                 <select name="country" className={input}>
-                  {destinationCountries.map((c) => (
-                    <option key={c}>{c}</option>
+                  {destinationCountries.map((c, i) => (
+                    <option key={c} value={c}>
+                      {q.countries[i] ?? c}
+                    </option>
                   ))}
                 </select>
               </Field>
-              <Field label="จังหวัด / เมือง" error={errors.city ? "กรอกจังหวัดหรือเมือง เพื่อประเมินค่าขนส่ง" : undefined}>
+              <Field label={q.city} error={errors.city ? q.cityError : undefined}>
                 <input name="city" value={city} onChange={(e) => setCity(e.target.value)} aria-invalid={errors.city} className={`${input} ${errors.city ? "border-2 border-[#c8101a]" : ""}`} />
               </Field>
-              <Field label="รหัสไปรษณีย์" optional>
+              <Field label={q.postcode} optional>
                 <input name="postcode" inputMode="numeric" className={input} />
               </Field>
             </div>
             <fieldset className="flex flex-wrap gap-2">
-              <legend className="pb-2 text-sm font-semibold">ต้องการให้ติดตั้งหรือไม่</legend>
-              {[["yes", "ต้องการติดตั้ง"], ["no", "ไม่ต้องการ"], ["unsure", "ยังไม่แน่ใจ"]].map(([value, t], i) => (
+              <legend className="pb-2 text-sm font-semibold">{q.installQuestion}</legend>
+              {[["yes", q.installYes], ["no", q.installNo], ["unsure", q.installUnsure]].map(([value, label], i) => (
                 <label key={value} className="inline-flex min-h-[46px] cursor-pointer items-center gap-2 rounded-full border border-[#d6d2cb] bg-white px-4 text-[15px] has-[:checked]:border-ink">
                   <input type="radio" name="installation" value={value} defaultChecked={i === 0} className="size-[18px] accent-ink" />
-                  {t}
+                  {label}
                 </label>
               ))}
             </fieldset>
             <div className="flex flex-col gap-1.5 rounded-xl bg-stage px-[22px] py-5">
               <span className="font-semibold">
-                การขนเข้าพื้นที่ <span className="text-sm font-normal text-muted">ช่วยให้ประเมินค่าขนส่งและติดตั้งแม่นขึ้น</span>
+                {q.accessTitle} <span className="text-sm font-normal text-muted">{q.accessNote}</span>
               </span>
               <div className="grid gap-x-[18px] md:grid-cols-2">
-                {[["access_upper_floor", "ติดตั้งชั้น 2 ขึ้นไป"], ["access_lift", "มีลิฟต์ขนของ"], ["access_stairs", "ต้องขนขึ้นบันได"], ["access_truck", "รถบรรทุกเข้าถึงจุดขนลงได้"]].map(([field, t]) => (
+                {[["access_upper_floor", q.accessUpper], ["access_lift", q.accessLift], ["access_stairs", q.accessStairs], ["access_truck", q.accessTruck]].map(([field, label]) => (
                   <label key={field} className="flex min-h-[42px] items-center gap-2.5">
                     <input type="checkbox" name={field} className="size-[18px] accent-ink" />
-                    {t}
+                    {label}
                   </label>
                 ))}
               </div>
             </div>
           </Section>
 
-          <Section n="03" title="ข้อมูลเพิ่มเติม" note="(ไม่บังคับ)">
+          <Section n="03" title={q.moreSection} note={t.common.optional}>
             <div className="grid gap-[18px] md:grid-cols-2">
-              <Field label="วันที่ต้องการรับสินค้า">
+              <Field label={q.targetDate}>
                 <input type="date" name="target_date" className={input} />
               </Field>
-              <Field label="งบประมาณโดยประมาณ">
-                <input name="budget" placeholder="เช่น 1,500,000 บาท" className={input} />
+              <Field label={q.budget}>
+                <input name="budget" placeholder={q.budgetExample} className={input} />
               </Field>
             </div>
-            <Field label="แนบแปลนพื้นที่หรือรูปห้อง" hint="PDF, JPG หรือ PNG ไม่เกิน 20 MB">
+            <Field label={q.attachment} hint={q.attachmentHint}>
               <input type="file" name="attachment" accept=".pdf,image/jpeg,image/png,image/webp,image/heic" className="min-h-16 rounded-[10px] border-[1.5px] border-dashed border-control bg-white p-[18px] text-sm" />
             </Field>
-            <Field label="ข้อความถึงทีมงาน">
-              <textarea name="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="เช่น ยิมขนาด 120 ตร.ม. เน้นคาร์ดิโอและเวทฟรี" className={`${input} py-3`} />
+            <Field label={q.message}>
+              <textarea name="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder={q.messageExample} className={`${input} py-3`} />
             </Field>
           </Section>
         </div>
 
-        <aside aria-label="สรุปคำขอ" className="flex min-w-0 flex-[1_1_360px] flex-col gap-[18px] rounded-[18px] bg-night p-6 text-white sm:p-8 lg:sticky lg:top-[108px]">
-          <span className="font-display text-[26px] font-bold">สรุปคำขอ</span>
+        <aside aria-label={q.summary} className="flex min-w-0 flex-[1_1_360px] flex-col gap-[18px] rounded-[18px] bg-night p-6 text-white sm:p-8 lg:sticky lg:top-[108px]">
+          <span className="font-display text-[26px] font-bold">{q.summary}</span>
           <div className="flex flex-col">
-            <SumRow label={`สินค้าที่มีราคา (${priced.length})`} value={formatMoney(subtotal, currency)} />
-            <SumRow label={`สินค้ารอเสนอราคา (${lines.length - priced.length})`} value="รอเสนอราคา" pending />
-            <SumRow label="ค่าขนส่ง" value="ให้ทีมงานประเมิน" pending />
-            <SumRow label="ค่าติดตั้ง" value="รอประเมิน" pending />
-            <SumRow label={`VAT ${Math.round(VAT_RATE * 100)}% (จัดส่งในไทย)`} value={formatMoney(Math.round(subtotal * VAT_RATE), currency)} />
-            <SumRow label="อากรนำเข้า (ต่างประเทศ)" value="รอประเมิน" pending />
+            <SumRow label={fmt(q.pricedItems, { n: priced.length })} value={formatMoney(subtotal, currency)} />
+            <SumRow label={fmt(q.unpricedItems, { n: lines.length - priced.length })} value={q.awaitingPrice} pending />
+            <SumRow label={q.shipping} value={q.shippingValue} pending />
+            <SumRow label={q.installFee} value={q.toBeAssessed} pending />
+            <SumRow label={fmt(q.vat, { rate: Math.round(VAT_RATE * 100) })} value={formatMoney(Math.round(subtotal * VAT_RATE), currency)} />
+            <SumRow label={q.importDuty} value={q.toBeAssessed} pending />
           </div>
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-muted-night">ยอดรวมเบื้องต้น (รวม VAT)</span>
+            <span className="text-muted-night">{q.estimate}</span>
             <span className="font-display text-[34px] font-bold tabular-nums">{formatMoney(Math.round(subtotal * (1 + VAT_RATE)), currency)}+</span>
           </div>
-          <span className="text-[13px] text-muted-night">ราคาสินค้ายังไม่รวม VAT · รวมเฉพาะสินค้าที่มีราคา ยังไม่ใช่ราคาสุดท้าย ส่วนลดสำหรับการซื้อจำนวนมากพิจารณาในใบเสนอราคา</span>
+          <span className="text-[13px] text-muted-night">{q.estimateNote}</span>
           {sendError && (
             <span role="alert" className="flex items-center gap-2 rounded-lg bg-[#3a1416] px-4 py-3 text-[15px] font-semibold text-[#ff5a61]">
               <Icon name="alert" className="shrink-0" /> {sendError}
             </span>
           )}
-          <button type="submit" disabled={sending} className="min-h-[60px] rounded-lg bg-brand font-display text-[19px] font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
-            {sending ? "กำลังส่ง…" : advisoryOnly ? "ขอคำแนะนำจัดชุดยิม" : "ส่งคำขอใบเสนอราคา"}
+          <button type="submit" disabled={sending} className="glow-ring relative min-h-[60px] rounded-lg bg-brand font-display text-[19px] font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
+            {sending ? q.sending : advisoryOnly ? q.submitAdvice : q.submit}
           </button>
           <span className="flex gap-2 text-[13px] text-[#d8d3cc]">
             <Icon name="check" className="shrink-0 text-[#3ecf6e]" />
-            ไม่มีการเรียกเก็บเงิน และยังไม่จองสินค้า
+            {q.noCharge}
           </span>
         </aside>
       </form>
@@ -357,10 +360,11 @@ function Section({ n, title, note, children }: { n: string; title: string; note?
 }
 
 function Field({ label, optional, hint, error, children }: { label: string; optional?: boolean; hint?: string; error?: string; children: React.ReactNode }) {
+  const { t } = useI18n();
   return (
     <label className="flex flex-col gap-1.5 text-sm font-semibold">
       <span>
-        {label} {optional && <span className="font-normal text-muted">(ไม่บังคับ)</span>}
+        {label} {optional && <span className="font-normal text-muted">{t.common.optional}</span>}
       </span>
       {children}
       {error ? (

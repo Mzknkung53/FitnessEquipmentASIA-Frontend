@@ -22,6 +22,7 @@ const paths = {
   lock: "M6 9V6.5a4 4 0 0 1 8 0V9M4.5 9h11v8h-11z",
   scan: "M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4M6 10h8",
   home: "M3 18V8l7-5 7 5v10M8 18v-6h4v6",
+  chevron: "M5 7.5l5 5 5-5",
   wrench: "M12.5 3a4 4 0 0 0-3.8 5.2L3 14l3 3 5.8-5.7A4 4 0 0 0 17 7.5l-2.4 2.4-2.5-2.5L14.5 5A4 4 0 0 0 12.5 3z",
 } as const;
 

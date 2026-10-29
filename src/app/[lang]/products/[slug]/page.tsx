@@ -5,8 +5,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Icon, PlayIcon } from "@/components/icons";
 import { ProductCard } from "@/components/product-card";
-import { ProductGallery, ProductPurchase } from "@/app/(site)/products/[slug]/product-client";
+import { ProductGallery, ProductPurchase } from "@/app/[lang]/products/[slug]/product-client";
 import { getCategories, getProduct, getProducts } from "@/lib/catalog";
+import { langFrom } from "@/lib/i18n";
+import { localePath } from "@/lib/i18n/config";
+import { categoryName } from "@/lib/i18n/names";
 
 // Cache Components requires at least one param at build time. With an empty catalog
 // (new project, or Supabase not configured) use a slug the database can never hold
@@ -19,12 +22,17 @@ export async function generateStaticParams() {
   return products.map((p) => ({ slug: p.slug }));
 }
 
-export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<"/[lang]/products/[slug]">): Promise<Metadata> {
+  const { lang, t } = await langFrom(params);
   const product = await getProduct((await params).slug);
-  return { title: product ? `${product.nameEn} · ${product.nameTh}` : "ไม่พบสินค้า" };
+  if (!product) return { title: t.meta.productNotFound };
+  return { title: lang === "th" ? `${product.nameEn} · ${product.nameTh}` : product.nameEn };
 }
 
-export default async function ProductPage({ params }: PageProps<"/products/[slug]">) {
+export default async function ProductPage({ params }: PageProps<"/[lang]/products/[slug]">) {
+  const { lang, t } = await langFrom(params);
+  const pt = t.product;
+  const to = (path: string) => localePath(lang, path);
   const { slug } = await params;
   const [product, products, categories] = await Promise.all([getProduct(slug), getProducts(), getCategories()]);
   if (!product) notFound();
@@ -36,8 +44,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   return (
     <>
       <div className="wrap flex flex-col gap-5 pt-6 pb-[72px]">
-        <nav aria-label="เส้นทาง" className="text-sm text-muted">
-          <Link href="/" className="underline">หน้าแรก</Link> / <Link href={`/products?cat=${product.category}`} className="underline">{category?.nameTh}</Link> / {product.nameEn}
+        <nav aria-label={t.common.breadcrumb} className="text-sm text-muted">
+          <Link href={to("/")} className="underline">{t.common.home}</Link> / <Link href={to(`/products?cat=${product.category}`)} className="underline">{category && categoryName(category, lang, t)}</Link> / {product.nameEn}
         </nav>
         <div className="grid items-start gap-14 lg:grid-cols-[1.2fr_1fr]">
           <ProductGallery product={product} />
@@ -47,11 +55,11 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
         </div>
       </div>
 
-      <nav aria-label="หัวข้อในหน้า" className="sticky top-[84px] z-20 border-y border-line bg-white">
+      <nav aria-label={pt.onThisPage} className="sticky top-[84px] z-20 border-y border-line bg-white">
         <div className="wrap flex gap-9 overflow-x-auto">
-          {visibleSpecs.length > 0 && <a href="#spec" className="inline-flex min-h-14 items-center border-b-[3px] border-brand font-semibold">สเปก</a>}
-          {product.usageSteps.length > 0 && <a href="#use" className="inline-flex min-h-14 items-center border-b-[3px] border-transparent font-semibold text-muted hover:text-ink">วิธีใช้งาน</a>}
-          <a href="#related" className="inline-flex min-h-14 items-center border-b-[3px] border-transparent font-semibold text-muted hover:text-ink">ใช้คู่กัน</a>
+          {visibleSpecs.length > 0 && <a href="#spec" className="inline-flex min-h-14 items-center border-b-[3px] border-brand font-semibold">{pt.specs}</a>}
+          {product.usageSteps.length > 0 && <a href="#use" className="inline-flex min-h-14 items-center border-b-[3px] border-transparent font-semibold text-muted hover:text-ink">{pt.howToUse}</a>}
+          <a href="#related" className="inline-flex min-h-14 items-center border-b-[3px] border-transparent font-semibold text-muted hover:text-ink">{pt.pairsWith}</a>
         </div>
       </nav>
 
@@ -63,7 +71,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
             </div>
             <div className="flex flex-col gap-7">
               <span className="eyebrow text-brand">Specifications</span>
-              <h2 className="font-display text-[44px] leading-[1.1] font-bold">สเปกและขนาด</h2>
+              <h2 className="font-display text-[44px] leading-[1.1] font-bold">{pt.specsTitle}</h2>
               <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-night-line bg-night-line">
                 {visibleSpecs.map((s) => (
                   <div key={s.label} className="flex flex-col bg-night p-[22px]">
@@ -72,9 +80,9 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
                   </div>
                 ))}
               </dl>
-              <span className="text-sm text-muted-night">ช่องที่ไม่มีข้อมูลจะถูกซ่อน · ขนาดกล่องใช้ประเมินค่าขนส่ง ไม่แสดงหน้าเว็บ</span>
+              <span className="text-sm text-muted-night">{pt.specsNote}</span>
               <span className="inline-flex min-h-[52px] w-fit items-center gap-2 rounded-lg bg-white px-5 font-semibold text-ink">
-                <Icon name="quote" /> คู่มือ PDF (จะแสดงเมื่อมีไฟล์)
+                <Icon name="quote" /> {pt.manual}
               </span>
             </div>
           </div>
@@ -90,11 +98,11 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               <span className="absolute grid size-[84px] place-items-center rounded-full bg-brand text-white">
                 <PlayIcon size={30} />
               </span>
-              <span className="absolute bottom-3.5 left-3.5 rounded bg-white/90 px-2 py-0.5 text-xs font-semibold">วิดีโอตัวอย่าง · รอไฟล์จริง</span>
+              <span className="absolute bottom-3.5 left-3.5 rounded bg-white/90 px-2 py-0.5 text-xs font-semibold">{t.common.sampleVideo}</span>
             </div>
             <div className="flex flex-col gap-5">
               <span className="eyebrow text-brand">How to use</span>
-              <h2 className="font-display text-[44px] leading-[1.1] font-bold">วิธีใช้งาน</h2>
+              <h2 className="font-display text-[44px] leading-[1.1] font-bold">{pt.howToUse}</h2>
               <ol className="flex flex-col border-b border-line">
                 {product.usageSteps.map((s, i) => (
                   <li key={s} className="flex gap-[18px] border-t border-line py-4">
@@ -109,7 +117,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
       )}
 
       <section id="related" className="wrap flex scroll-mt-40 flex-col gap-7 pt-6 pb-[104px]">
-        <h2 className="font-display text-4xl font-bold">ใช้คู่กันในยิม</h2>
+        <h2 className="font-display text-4xl font-bold">{pt.pairsTitle}</h2>
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {related.map((p) => (
             <ProductCard key={p.slug} product={p} />

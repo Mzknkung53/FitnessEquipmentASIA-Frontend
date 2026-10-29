@@ -128,6 +128,11 @@ body {
 :root {
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  /* Springs sampled into linear() (the way Framer ships them): --ease-spring settles
+     without overshoot, for things arriving; --ease-bounce overshoots ~8%, for small
+     confirmations (a badge count, a tick, a button letting go). */
+  --ease-spring: linear(0, 0.047 4.2%, 0.151 8.3%, 0.276 12.5%, 0.4 16.7%, 0.513 20.8%, 0.611 25%, 0.693 29.2%, 0.76 33.3%, 0.814 37.5%, 0.857 41.7%, 0.891 45.8%, 0.917 50%, 0.937 54.2%, 0.953 58.3%, 0.965 62.5%, 0.973 66.7%, 0.98 70.8%, 0.985 75%, 0.989 79.2%, 0.992 83.3%, 0.994 87.5%, 0.996 91.7%, 0.997 95.8%, 1);
+  --ease-bounce: linear(0, 0.058 3.8%, 0.197 7.7%, 0.371 11.5%, 0.55 15.4%, 0.711 19.2%, 0.845 23.1%, 0.946 26.9%, 1.016 30.8%, 1.058 34.6%, 1.079 38.5%, 1.083 42.3%, 1.077 46.2%, 1.065 50%, 1.05 53.8%, 1.035 57.7%, 1.022 61.5%, 1.011 65.4%, 1.003 69.2%, 0.998 73.1%, 0.995 76.9%, 0.993 80.8%, 0.993 84.6%, 0.994 88.5%, 0.995 92.3%, 0.996 96.2%, 1);
   --rise: 28px;
 }
 
@@ -137,7 +142,7 @@ body {
   animation: 200ms var(--ease-in) both page-leave;
 }
 ::view-transition-new(.page-in) {
-  animation: 460ms var(--ease-out) 120ms both page-arrive;
+  animation: 620ms var(--ease-spring) 120ms both page-arrive;
 }
 @keyframes page-leave {
   to { opacity: 0; transform: translateY(calc(var(--rise) * -0.5)); filter: blur(2px); }
@@ -162,7 +167,17 @@ body {
   from { opacity: 0; transform: translateY(var(--rise)); }
 }
 .page-enter {
-  animation: page-enter 560ms var(--ease-out) backwards;
+  animation: page-enter 700ms var(--ease-spring) backwards;
+}
+
+/* Hero copy on the home page: lines sharpen out of a blur one after another
+   (style="--i: n" sets the order), like Framer's text entrances. */
+@keyframes blur-rise {
+  from { opacity: 0; transform: translateY(18px); filter: blur(8px); }
+}
+.hero-in {
+  animation: blur-rise 900ms var(--ease-spring) backwards;
+  animation-delay: calc(var(--i, 0) * 90ms + 120ms);
 }
 
 /* Sections and product cards rise in as they scroll into view. Scroll-driven, so it
@@ -186,7 +201,7 @@ body {
   from { opacity: 0; transform: translateY(10px); }
 }
 .stagger-item {
-  animation: rise-in 420ms var(--ease-out) backwards;
+  animation: rise-in 560ms var(--ease-spring) backwards;
 }
 .stagger-item:nth-child(2) { animation-delay: 45ms; }
 .stagger-item:nth-child(3) { animation-delay: 90ms; }
@@ -201,7 +216,70 @@ body {
   from { opacity: 0; transform: scale(0.96); }
 }
 .flash-in {
-  animation: pop-in 380ms var(--ease-out) backwards;
+  animation: pop-in 520ms var(--ease-bounce) backwards;
+}
+
+/* A count that just changed (header badges) jumps once; re-keyed on every change. */
+@keyframes bump {
+  from { transform: scale(0.4); }
+}
+.bump {
+  animation: bump 480ms var(--ease-bounce) backwards;
+}
+
+/* Tick that draws itself in: "added", "sent". Use on <Icon name="check">. */
+@keyframes tick-draw {
+  from { stroke-dashoffset: 20; }
+}
+.tick-draw {
+  stroke-dasharray: 20;
+  animation: tick-draw 520ms var(--ease-spring) 80ms backwards;
+}
+
+/* Main call to action: a light runs around the border now and then (60fps
+   "border stroke pulse", Framer's glowing input). The button needs `relative`. */
+@property --glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes glow-spin {
+  0% { --glow-angle: 0deg; opacity: 0; }
+  10% { opacity: 1; }
+  45% { --glow-angle: 360deg; opacity: 1; }
+  55%, 100% { --glow-angle: 360deg; opacity: 0; }
+}
+.glow-ring::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  padding: 2px;
+  border-radius: calc(var(--radius-md) + 4px);
+  background: conic-gradient(from var(--glow-angle), transparent 0 55%, rgba(229, 18, 27, 0.25) 70%, var(--color-brand) 84%, #ff8a8f 89%, transparent 97%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  animation: glow-spin 4.5s linear 1.2s infinite both;
+}
+
+/* Main menu: the underline grows in from the left on hover and stays on the current page. */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: var(--color-brand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 420ms var(--ease-spring);
+}
+.nav-link:hover::after,
+.nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
 }
 
 /* Small panels that open: mobile menu, toasts. */
@@ -209,7 +287,7 @@ body {
   from { opacity: 0; transform: translateY(-8px); }
 }
 .drop-in {
-  animation: drop-in 260ms var(--ease-out) backwards;
+  animation: drop-in 380ms var(--ease-spring) backwards;
 }
 
 /* A new-request badge asks for attention a few times, then stays still. */
@@ -221,12 +299,14 @@ body {
   animation: badge-pulse 1.2s ease-out 3;
 }
 
-/* Buttons sink slightly when pressed; links and controls ease their colour changes.
-   In the base layer, so any transition utility on an element still wins. */
+/* Buttons sink when pressed and spring back when let go (60fps "tactile button");
+   links and controls ease their colour changes. In the base layer, so any
+   transition utility on an element still wins. */
 @layer base {
   button:not(:disabled):active,
   a.inline-flex:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
+    transition-duration: 160ms, 160ms, 160ms, 160ms, 90ms, 160ms;
   }
   button,
   a,
@@ -234,8 +314,8 @@ body {
   select,
   textarea {
     transition-property: color, background-color, border-color, box-shadow, transform, opacity;
-    transition-duration: 160ms;
-    transition-timing-function: ease-out;
+    transition-duration: 160ms, 160ms, 160ms, 160ms, 420ms, 160ms;
+    transition-timing-function: ease-out, ease-out, ease-out, ease-out, var(--ease-bounce), ease-out;
   }
 }
 
@@ -250,8 +330,13 @@ body {
   html { scroll-behavior: auto; }
   :root { --rise: 0px; }
   .marquee-track,
-  .badge-pulse { animation: none; }
-  .badge-new::after { display: none; }
+  .badge-pulse,
+  .bump,
+  .tick-draw { animation: none; }
+  .badge-new::after,
+  .glow-ring::before { display: none; }
+  .nav-link::after { transition: none; }
+  @keyframes blur-rise { from { opacity: 0; } }
   @keyframes reveal { from { opacity: 0; } }
   @keyframes pop-in { from { opacity: 0; } }
   @keyframes page-leave { to { opacity: 0; } }

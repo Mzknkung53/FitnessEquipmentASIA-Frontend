@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { canHandleQuotes, getAuthProfile } from "@/lib/auth";
+import { fmt } from "@/lib/i18n/config";
+import { getStaffI18n } from "@/lib/i18n/staff";
+import type { StaffDictionary } from "@/lib/i18n/staff-th";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { QuoteStatus } from "@/app/staff/quotes/quote-meta";
 
@@ -10,24 +13,24 @@ export type QuoteActionResult = { ok: true } | { ok: false; error: string };
 const uuidRe = /^[0-9a-f-]{36}$/i;
 
 /** Database rule codes (SQLSTATE 22023 / 42501) → messages for staff. */
-function message(error: { code?: string; message: string }): string {
+function message(error: { code?: string; message: string }, e: StaffDictionary["errors"]): string {
   const m = error.message;
-  if (error.code === "42501" || m === "forbidden") return "บัญชีนี้ไม่มีสิทธิ์จัดการใบขอราคา";
-  if (m === "quote_closed") return "ใบนี้ปิดไปแล้ว กด “เปิดใหม่” ก่อนแก้ราคา";
-  if (m.startsWith("missing:price:")) return `ใส่ราคาให้ครบทุกรายการ (ยังขาด ${m.slice("missing:price:".length)})`;
-  if (m === "invalid:price") return "ราคาต้องเป็นตัวเลขไม่ติดลบ ทศนิยมไม่เกิน 2 ตำแหน่ง";
-  if (m === "missing:total") return "ใส่ยอดรวมก่อน VAT";
-  if (m === "invalid:vat_rate") return "อัตรา VAT ไม่ถูกต้อง";
-  if (m === "unknown_quote") return "ไม่พบใบขอราคานี้";
-  if (m.startsWith("invalid_transition:")) return "เปลี่ยนสถานะแบบนี้ไม่ได้ ลองรีเฟรชหน้า";
+  if (error.code === "42501" || m === "forbidden") return e.quoteForbidden;
+  if (m === "quote_closed") return e.quoteClosed;
+  if (m.startsWith("missing:price:")) return fmt(e.missingPricesFor, { skus: m.slice("missing:price:".length) });
+  if (m === "invalid:price") return e.badPriceValue;
+  if (m === "missing:total") return e.missingTotal;
+  if (m === "invalid:vat_rate") return e.badVat;
+  if (m === "unknown_quote") return e.unknownQuote;
+  if (m.startsWith("invalid_transition:")) return e.badTransition;
   console.error("Quote action failed", error);
-  return "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง";
+  return e.saveFailed;
 }
 
-async function guard(quoteId: string): Promise<string | null> {
+async function guard(quoteId: string, e: StaffDictionary["errors"]): Promise<string | null> {
   const profile = await getAuthProfile();
-  if (!profile || !canHandleQuotes(profile)) return "บัญชีนี้ไม่มีสิทธิ์จัดการใบขอราคา";
-  if (!uuidRe.test(quoteId)) return "ไม่พบใบขอราคานี้";
+  if (!profile || !canHandleQuotes(profile)) return e.quoteForbidden;
+  if (!uuidRe.test(quoteId)) return e.unknownQuote;
   return null;
 }
 
@@ -43,13 +46,14 @@ export async function saveQuotation(input: {
   vatRate: number;
   totalThb?: string;
 }): Promise<QuoteActionResult> {
-  const denied = await guard(input.quoteId);
+  const e = (await getStaffI18n()).t.errors;
+  const denied = await guard(input.quoteId, e);
   if (denied) return { ok: false, error: denied };
-  if (![0, 7].includes(input.vatRate)) return { ok: false, error: "อัตรา VAT ไม่ถูกต้อง" };
+  if (![0, 7].includes(input.vatRate)) return { ok: false, error: e.badVat };
 
   const clean = (s: string) => s.replace(/[,\s฿]/g, "");
   const lines = input.lines.map((l) => ({ id: l.id, price: clean(l.price) }));
-  if (lines.some((l) => l.price === "")) return { ok: false, error: "ใส่ราคาให้ครบทุกรายการ" };
+  if (lines.some((l) => l.price === "")) return { ok: false, error: e.missingPrices };
 
   const supabase = await createServerSupabase();
   const { error } = await supabase.rpc("save_quotation", {
@@ -58,7 +62,7 @@ export async function saveQuotation(input: {
     p_vat_rate: input.vatRate,
     p_total_thb: input.totalThb != null && clean(input.totalThb) !== "" ? Number(clean(input.totalThb)) : null,
   });
-  if (error) return { ok: false, error: message(error) };
+  if (error) return { ok: false, error: message(error, e) };
   refresh(input.quoteId);
   return { ok: true };
 }
@@ -66,9 +70,10 @@ export async function saveQuotation(input: {
 const settable: QuoteStatus[] = ["reviewing", "won", "lost", "cancelled"];
 
 export async function setQuoteStatus(quoteId: string, status: QuoteStatus, lostReason?: string): Promise<QuoteActionResult> {
-  const denied = await guard(quoteId);
+  const e = (await getStaffI18n()).t.errors;
+  const denied = await guard(quoteId, e);
   if (denied) return { ok: false, error: denied };
-  if (!settable.includes(status)) return { ok: false, error: "สถานะไม่ถูกต้อง" };
+  if (!settable.includes(status)) return { ok: false, error: e.badQuoteStatus };
 
   const supabase = await createServerSupabase();
   const { error } = await supabase.rpc("set_quote_status", {
@@ -76,7 +81,7 @@ export async function setQuoteStatus(quoteId: string, status: QuoteStatus, lostR
     p_status: status,
     p_lost_reason: lostReason?.trim() || null,
   });
-  if (error) return { ok: false, error: message(error) };
+  if (error) return { ok: false, error: message(error, e) };
   refresh(quoteId);
   return { ok: true };
 }

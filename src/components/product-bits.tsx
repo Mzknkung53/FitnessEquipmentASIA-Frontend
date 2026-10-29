@@ -1,6 +1,9 @@
+"use client";
+
 import Image from "next/image";
+import { useI18n } from "@/components/i18n-provider";
 import { BoltIcon, Icon } from "@/components/icons";
-import { statusMeta } from "@/lib/pricing";
+import { statusDot } from "@/lib/pricing";
 import type { PictogramKind, Product, StockStatus } from "@/lib/types";
 
 // Generic category line drawings. Placeholders only, never a depiction of a real model.
@@ -18,8 +21,9 @@ const pictograms: Record<PictogramKind, string> = {
 };
 
 export function Pictogram({ kind, className = "" }: { kind: PictogramKind; className?: string }) {
+  const { t } = useI18n();
   return (
-    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="ภาพประกอบหมวดสินค้า — รอรูปสินค้าจริง" className={className}>
+    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={t.common.illustrationLabel} className={className}>
       <path d={pictograms[kind]} />
     </svg>
   );
@@ -35,25 +39,27 @@ export function NewBadge({ label = "NEW" }: { label?: string }) {
 }
 
 export function StatusChip({ status, className = "" }: { status: StockStatus; className?: string }) {
-  const meta = statusMeta[status];
+  const { t } = useI18n();
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[13px] font-semibold shadow-[0_1px_2px_rgba(0,0,0,.08)] ${className}`}>
-      <span className={`size-2 rounded-full ${meta.dot}`} />
-      {meta.label}
+      <span className={`size-2 rounded-full ${statusDot[status]}`} />
+      {t.status[status]}
     </span>
   );
 }
 
-export function DemoTag({ children = "ข้อมูลตัวอย่าง", dark = false }: { children?: React.ReactNode; dark?: boolean }) {
+export function DemoTag({ children, dark = false }: { children?: React.ReactNode; dark?: boolean }) {
+  const { t } = useI18n();
   return (
     <span className={`inline-flex rounded border border-dashed px-2 py-0.5 text-xs font-semibold ${dark ? "border-[#5a544d] text-muted-night" : "border-control bg-white text-muted"}`}>
-      {children}
+      {children ?? t.common.demoData}
     </span>
   );
 }
 
 /** Product photo on the showroom stage, or a labelled placeholder when no photo exists yet. */
 export function ProductMedia({ product, sizes, priority = false, className = "w-[86%] h-[86%]" }: { product: Product; sizes: string; priority?: boolean; className?: string }) {
+  const { t } = useI18n();
   if (product.image) {
     return (
       <Image
@@ -71,14 +77,14 @@ export function ProductMedia({ product, sizes, priority = false, className = "w-
     return (
       <>
         <Pictogram kind={product.pictogram} className="h-[52%] w-[52%] text-control" />
-        <span className="absolute bottom-3 left-3 rounded border border-dashed border-control bg-white px-2 py-0.5 text-[11px] font-semibold text-muted">ภาพประกอบ · รอรูปจริง</span>
+        <span className="absolute bottom-3 left-3 rounded border border-dashed border-control bg-white px-2 py-0.5 text-[11px] font-semibold text-muted">{t.common.illustration}</span>
       </>
     );
   }
   return (
     <span className="flex flex-col items-center gap-1.5 text-sm text-muted">
       <Icon name="image" />
-      ยังไม่มีรูปสินค้า
+      {t.common.noImage}
     </span>
   );
 }

@@ -1,4 +1,5 @@
 import { PageTransition } from "@/components/page-transition";
+import { getStaffI18n } from "@/lib/i18n/staff";
 
 /** A message in place of a staff page's content (no access, database not ready, …). */
 export function StaffNotice({ title, children }: { title: string; children?: React.ReactNode }) {
@@ -22,12 +23,12 @@ export function isMissingMigration(error: { code?: string; message: string }) {
   return error.code === "PGRST205" || error.code === "PGRST202" || /schema cache|does not exist/i.test(error.message);
 }
 
-export function MigrationNeeded({ file }: { file: string }) {
+export async function MigrationNeeded({ file }: { file: string }) {
+  const { t } = await getStaffI18n();
   return (
-    <StaffNotice title="ฐานข้อมูลยังไม่ได้อัปเดตสำหรับหน้านี้">
+    <StaffNotice title={t.notice.migrationTitle}>
       <p>
-        เปิด Supabase → SQL Editor แล้วรันไฟล์ <code className="font-mono text-white">supabase/migrations/{file}</code> จาก repo Backend
-        จากนั้นรีเฟรชหน้านี้
+        {t.notice.migrationBefore} <code className="font-mono text-white">supabase/migrations/{file}</code> {t.notice.migrationAfter}
       </p>
     </StaffNotice>
   );

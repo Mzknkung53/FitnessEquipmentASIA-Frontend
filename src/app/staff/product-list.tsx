@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useStaffI18n } from "@/app/staff/staff-i18n";
 import { Icon } from "@/components/icons";
+import { fmt, localePath } from "@/lib/i18n/config";
 
 export type StaffProductRow = {
   slug: string;
@@ -16,13 +18,15 @@ export type StaffProductRow = {
   thumb: string | null;
 };
 
-const statusBadge: Record<StaffProductRow["status"], { label: string; cls: string }> = {
-  published: { label: "แสดงบนเว็บ", cls: "bg-[#16261c] text-[#6cc28d]" },
-  draft: { label: "แบบร่าง", cls: "bg-[#262422] text-[#d8d3cc]" },
-  archived: { label: "ซ่อนแล้ว", cls: "bg-[#262422] text-muted-night" },
+const statusCls: Record<StaffProductRow["status"], string> = {
+  published: "bg-[#16261c] text-[#6cc28d]",
+  draft: "bg-[#262422] text-[#d8d3cc]",
+  archived: "bg-[#262422] text-muted-night",
 };
 
 export function StaffProductList({ products }: { products: StaffProductRow[] }) {
+  const { lang, t } = useStaffI18n();
+  const tp = t.products;
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const shown = q
@@ -32,8 +36,8 @@ export function StaffProductList({ products }: { products: StaffProductRow[] }) 
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-start gap-3 rounded-2xl border border-[#26231f] bg-night-2 p-8">
-        <p className="text-lg font-semibold">ยังไม่มีสินค้า</p>
-        <p className="text-muted-night">เริ่มจากปุ่ม &ldquo;เพิ่มสินค้า&rdquo; ด้านบน ใช้เวลาประมาณ 2 นาทีต่อชิ้น</p>
+        <p className="text-lg font-semibold">{tp.emptyTitle}</p>
+        <p className="text-muted-night">{tp.emptyBody}</p>
       </div>
     );
   }
@@ -41,19 +45,19 @@ export function StaffProductList({ products }: { products: StaffProductRow[] }) 
   return (
     <div className="flex flex-col gap-3">
       <label className="relative">
-        <span className="sr-only">ค้นหาสินค้า</span>
+        <span className="sr-only">{tp.search}</span>
         <Icon name="search" size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-night" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ค้นหาชื่อ รหัส หรือหมวด"
+          placeholder={tp.searchPlaceholder}
           className="min-h-12 w-full rounded-lg border border-[#3d3934] bg-[#151311] pr-4 pl-11 text-[15px] text-white placeholder:text-muted-night"
         />
       </label>
 
       {shown.length === 0 ? (
-        <p className="rounded-2xl border border-[#26231f] bg-night-2 p-6 text-muted-night">ไม่พบสินค้าที่ตรงกับ &ldquo;{query}&rdquo;</p>
+        <p className="rounded-2xl border border-[#26231f] bg-night-2 p-6 text-muted-night">{fmt(tp.noMatch, { q: query })}</p>
       ) : (
         <ul className="divide-y divide-[#26231f] overflow-hidden rounded-2xl border border-[#26231f] bg-night-2">
           {shown.map((p) => (
@@ -73,10 +77,10 @@ export function StaffProductList({ products }: { products: StaffProductRow[] }) 
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1 text-sm">
                 <span className="tabular-nums">{p.price}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[p.status].cls}`}>{statusBadge[p.status].label}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusCls[p.status]}`}>{tp.status[p.status]}</span>
               </div>
               {p.status === "published" && (
-                <Link href={`/products/${p.slug}`} target="_blank" aria-label={`ดู ${p.nameTh} บนหน้าเว็บ`} className="hidden shrink-0 rounded-lg border border-[#3d3934] p-2.5 text-muted-night hover:border-white hover:text-white sm:inline-flex">
+                <Link href={localePath(lang, `/products/${p.slug}`)} target="_blank" aria-label={fmt(tp.viewOnSite, { name: lang === "th" ? p.nameTh : p.nameEn })} className="hidden shrink-0 rounded-lg border border-[#3d3934] p-2.5 text-muted-night hover:border-white hover:text-white sm:inline-flex">
                   <Icon name="arrowUpRight" size={16} />
                 </Link>
               )}

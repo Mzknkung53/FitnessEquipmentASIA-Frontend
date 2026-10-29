@@ -6,6 +6,10 @@ import { requireStaff, StaffHeader } from "@/app/staff/staff-header";
 import { isMissingMigration, MigrationNeeded, StaffNotice } from "@/app/staff/staff-notice";
 import { canHandleQuotes } from "@/lib/auth";
 import { formatMoney } from "@/lib/pricing";
+import { StaffI18nProvider } from "@/app/staff/staff-i18n";
+import { fmt } from "@/lib/i18n/config";
+import { getStaffI18n } from "@/lib/i18n/staff";
+import { destinationCountries } from "@/lib/site";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { ContactMethod } from "@/lib/types";
 
@@ -13,7 +17,7 @@ export const metadata = { title: "ใบขอราคา" };
 
 export default function QuotesPage() {
   return (
-    <Suspense fallback={<div className="grid min-h-dvh place-items-center text-muted-night">กำลังโหลด…</div>}>
+    <Suspense fallback={<div className="grid min-h-dvh place-items-center text-muted-night">…</div>}>
       <Quotes />
     </Suspense>
   );
@@ -40,14 +44,18 @@ type OverviewRow = {
 
 async function Quotes() {
   const profile = await requireStaff();
+  const { lang, t } = await getStaffI18n();
+  const tq = t.quotes;
   if (!canHandleQuotes(profile)) {
     return (
       <>
         <StaffHeader profile={profile} active="quotes" />
-        <StaffNotice title="ใบขอราคาเปิดดูได้เฉพาะฝ่ายขายและผู้ดูแลระบบ" />
+        <StaffNotice title={t.notice.quotesNoAccess} />
       </>
     );
   }
+  // Countries are saved in Thai; show them in the staff member's language.
+  const country = (c: string) => t.countries[destinationCountries.indexOf(c)] ?? c;
 
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.from("quote_overview").select("*").order("created_at", { ascending: false }).limit(500);
@@ -65,9 +73,9 @@ async function Quotes() {
     id: q.id,
     reference: q.reference,
     status: q.status,
-    createdAt: formatDateTime(q.created_at),
+    createdAt: formatDateTime(q.created_at, lang),
     who: q.company ? `${q.contact_name} · ${q.company}` : q.contact_name,
-    where: q.country === "ไทย" ? q.city : `${q.city}, ${q.country}`,
+    where: q.country === "ไทย" ? q.city : `${q.city}, ${country(q.country)}`,
     items: q.item_count,
     attachments: q.attachment_count,
     mine: Boolean(q.assigned_to_me),
@@ -75,26 +83,26 @@ async function Quotes() {
       q.quoted_grand_total_thb != null
         ? formatMoney(q.quoted_grand_total_thb)
         : q.item_count === 0
-          ? "ขอคำแนะนำ"
+          ? tq.advice
           : q.list_total_thb != null && q.unpriced_items === 0
-            ? `ราคาเว็บ ${formatMoney(q.list_total_thb)}`
-            : "รอเสนอราคา",
+            ? fmt(tq.listPrice, { price: formatMoney(q.list_total_thb) })
+            : tq.awaiting,
     quoted: q.quoted_grand_total_thb != null,
     search: [q.reference, q.contact_name, q.company, q.contact_value, q.city, q.country].filter(Boolean).join(" ").toLowerCase(),
   }));
 
   return (
-    <>
+    <StaffI18nProvider lang={lang} t={t}>
       <StaffHeader profile={profile} active="quotes" />
       <PageTransition>
         <main className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
           <div className="flex flex-col gap-1">
-            <h1 className="font-display text-4xl font-bold">ใบขอราคา</h1>
-            <p className="text-sm text-muted-night">คำขอจากหน้าเว็บ · กดที่รายการเพื่อใส่ราคาและเปลี่ยนสถานะ</p>
+            <h1 className="font-display text-4xl font-bold">{tq.title}</h1>
+            <p className="text-sm text-muted-night">{tq.intro}</p>
           </div>
           <QuoteList rows={rows} />
         </main>
       </PageTransition>
-    </>
+    </StaffI18nProvider>
   );
 }

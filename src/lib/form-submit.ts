@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import type { Dictionary } from "@/lib/i18n/th";
 import { serviceClient } from "@/lib/supabase";
 
 // Shared server-side pieces of the quote and service-request actions.
@@ -32,22 +33,22 @@ export function file(form: FormData, key: string): File | undefined {
 }
 
 /** Checked before anything is saved, so a bad file never leaves a half-made request. */
-export function attachmentError(f: File | undefined, allowed: string[]): string | undefined {
+export function attachmentError(f: File | undefined, allowed: string[], msg: Dictionary["submit"]): string | undefined {
   if (!f) return undefined;
-  if (!allowed.includes(f.type)) return "ไฟล์แนบต้องเป็นชนิดที่รองรับเท่านั้น";
-  if (f.size > MAX_ATTACHMENT_BYTES) return "ไฟล์แนบใหญ่เกิน 20 MB";
+  if (!allowed.includes(f.type)) return msg.fileType;
+  if (f.size > MAX_ATTACHMENT_BYTES) return msg.fileSize;
   return undefined;
 }
 
 /** Turns the database's validation codes (SQLSTATE 22023) into a message for the customer. */
-export function dbErrorMessage(error: { code?: string; message: string }): string {
+export function dbErrorMessage(error: { code?: string; message: string }, msg: Dictionary["submit"]): string {
   if (error.code === "22023") {
-    if (error.message.startsWith("unknown_sku:")) return "มีสินค้าบางรายการที่ไม่อยู่ในระบบแล้ว กรุณาลบออกจากรายการแล้วส่งอีกครั้ง";
-    if (error.message.startsWith("missing:") || error.message.startsWith("invalid:")) return "ข้อมูลบางช่องไม่ครบหรือไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
-    if (error.message.startsWith("too_long:")) return "ข้อความบางช่องยาวเกินไป";
+    if (error.message.startsWith("unknown_sku:")) return msg.unknownSku;
+    if (error.message.startsWith("missing:") || error.message.startsWith("invalid:")) return msg.invalid;
+    if (error.message.startsWith("too_long:")) return msg.tooLong;
   }
   console.error("Supabase error", error);
-  return "ส่งคำขอไม่สำเร็จ กรุณาลองใหม่ หรือติดต่อทีมงานทางช่องทางอื่น";
+  return msg.failed;
 }
 
 /**

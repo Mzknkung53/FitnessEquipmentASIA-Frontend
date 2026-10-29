@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuthProfile } from "@/lib/auth";
+import { fmt } from "@/lib/i18n/config";
+import { getStaffI18n } from "@/lib/i18n/staff";
+import { staffTh } from "@/lib/i18n/staff-th";
 import { categoryPrefix, formatProductCode, maxSequence } from "@/lib/product-codes";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -12,10 +15,10 @@ const imageTypes = new Set(["image/webp", "image/jpeg", "image/png"]);
 const maxImageBytes = 10 * 1024 * 1024;
 
 const angleSlots = [
-  { key: "image_front", label: "มุมหน้า", sort: 0, required: true },
-  { key: "image_side", label: "มุมข้าง", sort: 1, required: false },
-  { key: "image_back", label: "มุมหลัง", sort: 2, required: false },
-  { key: "image_detail", label: "รายละเอียด / มุมอื่น", sort: 3, required: false },
+  { key: "image_front", sort: 0, required: true },
+  { key: "image_side", sort: 1, required: false },
+  { key: "image_back", sort: 2, required: false },
+  { key: "image_detail", sort: 3, required: false },
 ] as const;
 
 function text(form: FormData, key: string) {
@@ -47,10 +50,11 @@ function normalizeVideoUrl(raw: string) {
 
 /** Next sequential code for a category, e.g. plaload-0001 */
 export async function getNextProductCode(categoryId: string): Promise<{ ok: true; code: string; prefix: string } | { ok: false; error: string }> {
+  const { t } = await getStaffI18n();
   const profile = await getAuthProfile();
-  if (!profile?.isStaff) return { ok: false, error: "ต้องเข้าสู่ระบบพนักงานก่อน" };
+  if (!profile?.isStaff) return { ok: false, error: t.errors.signIn };
   const id = categoryId.toLowerCase().trim();
-  if (!categoryRe.test(id)) return { ok: false, error: "หมวดไม่ถูกต้อง" };
+  if (!categoryRe.test(id)) return { ok: false, error: t.errors.badCategory };
 
   const prefix = categoryPrefix(id);
   const supabase = await createServerSupabase();
@@ -64,8 +68,11 @@ export async function getNextProductCode(categoryId: string): Promise<{ ok: true
 
 /** Creates category + product + variant + angled media. Codes are assigned sequentially. */
 export async function createStaffProduct(form: FormData): Promise<StaffActionResult> {
+  // Replies in the staff member's language; saved data (alt text, default version name) stays as entered.
+  const { t } = await getStaffI18n();
+  const e = t.errors;
   const profile = await getAuthProfile();
-  if (!profile?.isStaff) return { ok: false, error: "ต้องเข้าสู่ระบบพนักงานก่อน" };
+  if (!profile?.isStaff) return { ok: false, error: e.signIn };
 
   const categoryId = text(form, "category_id").toLowerCase();
   const categoryNameTh = text(form, "category_name_th");
@@ -81,24 +88,24 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
   const settingCommercial = form.has("setting_commercial");
   const videoUrlRaw = text(form, "video_url");
   const videoUrl = normalizeVideoUrl(videoUrlRaw);
-  if (videoUrlRaw && !videoUrl) return { ok: false, error: "ลิงก์วิดีโอไม่ถูกต้อง (ใช้ https://...)" };
+  if (videoUrlRaw && !videoUrl) return { ok: false, error: e.badVideo };
 
-  if (!categoryRe.test(categoryId)) return { ok: false, error: "รหัสหมวดต้องเป็น a-z, 0-9, ขีด (-)" };
-  if (!categoryNameTh || !categoryNameEn) return { ok: false, error: "กรอกชื่อหมวดภาษาไทยและอังกฤษ" };
-  if (!nameTh || !nameEn) return { ok: false, error: "กรอกชื่อสินค้าให้ครบ" };
-  if (!["ready", "preorder", "import", "out"].includes(stockStatus)) return { ok: false, error: "สถานะสต็อกไม่ถูกต้อง" };
-  if (!["draft", "published", "archived"].includes(status)) return { ok: false, error: "สถานะสินค้าไม่ถูกต้อง" };
+  if (!categoryRe.test(categoryId)) return { ok: false, error: e.categoryId };
+  if (!categoryNameTh || !categoryNameEn) return { ok: false, error: e.categoryNames };
+  if (!nameTh || !nameEn) return { ok: false, error: e.productNames };
+  if (!["ready", "preorder", "import", "out"].includes(stockStatus)) return { ok: false, error: e.badStock };
+  if (!["draft", "published", "archived"].includes(status)) return { ok: false, error: e.badStatus };
 
   const front = fileOne(form, "image_front");
-  if (!front) return { ok: false, error: "ต้องมีรูปมุมหน้า" };
+  if (!front) return { ok: false, error: e.needFront };
 
   const angled = angleSlots
     .map((slot) => ({ slot, file: fileOne(form, slot.key) }))
     .filter((row): row is { slot: (typeof angleSlots)[number]; file: File } => Boolean(row.file));
 
   for (const { slot, file } of angled) {
-    if (!imageTypes.has(file.type)) return { ok: false, error: `รองรับเฉพาะ JPG / PNG / WebP (${slot.label})` };
-    if (file.size > maxImageBytes) return { ok: false, error: `แต่ละรูปไม่เกิน 10 MB (${slot.label})` };
+    if (!imageTypes.has(file.type)) return { ok: false, error: fmt(e.imageType, { angle: e.angles[slot.key] }) };
+    if (file.size > maxImageBytes) return { ok: false, error: fmt(e.imageSize, { angle: e.angles[slot.key] }) };
   }
 
   let imageMeta: Record<string, { width: number; height: number }> = {};
@@ -106,13 +113,13 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
     const parsed: unknown = JSON.parse(text(form, "image_meta") || "{}");
     if (parsed && typeof parsed === "object") imageMeta = parsed as Record<string, { width: number; height: number }>;
   } catch {
-    return { ok: false, error: "ข้อมูลขนาดรูปไม่ถูกต้อง ลองเลือกรูปใหม่" };
+    return { ok: false, error: e.imageMeta };
   }
 
   let priceThb: number | null = null;
   if (priceRaw !== "") {
     priceThb = Number(priceRaw);
-    if (!Number.isFinite(priceThb) || priceThb <= 0) return { ok: false, error: "ราคาต้องมากกว่า 0 หรือเว้นว่างถ้าให้สอบถามราคา" };
+    if (!Number.isFinite(priceThb) || priceThb <= 0) return { ok: false, error: e.badPrice };
   }
 
   const setting: Array<"home" | "commercial"> = [];
@@ -136,7 +143,7 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
       { id: categoryId, name_th: categoryNameTh, name_en: categoryNameEn, sort: (last?.sort ?? 0) + 10 },
       { onConflict: "id", ignoreDuplicates: true },
     );
-    if (catError) return { ok: false, error: `หมวดหมู่: ${catError.message}` };
+    if (catError) return { ok: false, error: fmt(e.categoryFailed, { message: catError.message }) };
   }
 
   const { data: product, error: productError } = await supabase
@@ -157,7 +164,7 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
     })
     .select("id")
     .single();
-  if (productError) return { ok: false, error: `สินค้า: ${productError.message}` };
+  if (productError) return { ok: false, error: fmt(e.productFailed, { message: productError.message }) };
 
   const { error: variantError } = await supabase.from("variants").insert({
     sku,
@@ -171,7 +178,7 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
   });
   if (variantError) {
     await supabase.from("products").delete().eq("id", product.id);
-    return { ok: false, error: `รุ่นย่อย: ${variantError.message}` };
+    return { ok: false, error: fmt(e.variantFailed, { message: variantError.message }) };
   }
 
   // Undo a half-saved product: the row (variants/media cascade) and any uploaded photos.
@@ -196,7 +203,7 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
     const meta = imageMeta[slot.key];
     const width = meta?.width && meta.width > 0 ? Math.round(meta.width) : 1200;
     const height = meta?.height && meta.height > 0 ? Math.round(meta.height) : 1200;
-    const alt = `${nameTh} · ${slot.label}`;
+    const alt = `${nameTh} · ${staffTh.errors.angles[slot.key]}`;
     const path = `products/${slug}/${slot.key.replace("image_", "")}.${extFor(file.type)}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     const { error: uploadError } = await supabase.storage.from("product-media").upload(path, buffer, {
@@ -205,7 +212,7 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
     });
     if (uploadError) {
       await rollback();
-      return { ok: false, error: `อัปโหลด${slot.label}ไม่สำเร็จ: ${uploadError.message}` };
+      return { ok: false, error: fmt(e.uploadFailed, { angle: e.angles[slot.key], message: uploadError.message }) };
     }
     uploaded.push(path);
     mediaRows.push({
@@ -232,7 +239,7 @@ export async function createStaffProduct(form: FormData): Promise<StaffActionRes
     const { error: mediaError } = await supabase.from("product_media").insert(mediaRows);
     if (mediaError) {
       await rollback();
-      return { ok: false, error: `บันทึกสื่อไม่สำเร็จ: ${mediaError.message}` };
+      return { ok: false, error: fmt(e.mediaFailed, { message: mediaError.message }) };
     }
   }
 

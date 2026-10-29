@@ -8,7 +8,7 @@ import { Pictogram } from "@/components/product-bits";
 import { QtyStepper } from "@/components/qty-stepper";
 import { canBuy, formatMoney } from "@/lib/pricing";
 import { shop, useShop } from "@/lib/shop-store";
-import { destinationCountries, showroom } from "@/lib/site";
+import { branches, destinationCountries } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
 const steps = ["ข้อมูลติดต่อและที่อยู่", "การจัดส่ง", "วิธีชำระเงิน", "ตรวจสอบและยืนยัน"];
@@ -113,7 +113,7 @@ export function CheckoutClient({ products }: { products: Product[] }) {
                 <span><strong>ให้ทีมงานประเมินค่าขนส่ง</strong> — ยังไม่มีอัตราอัตโนมัติสำหรับที่อยู่นี้</span>
               </div>
               <Choice checked={fulfil === "confirm"} onChange={() => setFulfil("confirm")} name="ful" title="ให้ทีมงานยืนยันค่าขนส่งก่อน แล้วค่อยชำระ" note="เราส่งยอดรวมทั้งหมดให้ตรวจสอบ ยังไม่มีการตัดเงิน" />
-              <Choice checked={fulfil === "pickup"} onChange={() => setFulfil("pickup")} name="ful" title="รับสินค้าเองที่โชว์รูม" note={`${showroom.address} · ทีมงานนัดวันรับสินค้า`} />
+              <Choice checked={fulfil === "pickup"} onChange={() => setFulfil("pickup")} name="ful" title="รับสินค้าเองที่โชว์รูม" note={`${branches.map((b) => b.address.th).join(" / ")} · ทีมงานนัดวันรับสินค้า`} />
               <label className="flex items-center gap-2.5"><input type="checkbox" className="size-5 accent-ink" />ต้องการบริการติดตั้ง (แจ้งค่าบริการก่อนยืนยัน)</label>
             </>
           )}

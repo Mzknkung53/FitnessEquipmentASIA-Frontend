@@ -3,6 +3,8 @@
 import { after } from "next/server";
 import { attachFile, attachmentError, dbErrorMessage, file, text, type SubmitResult } from "@/lib/form-submit";
 import { contactLabel } from "@/app/staff/quotes/quote-meta";
+import { getDictionary } from "@/lib/i18n";
+import { isLocale } from "@/lib/i18n/config";
 import { notifyStaff, siteUrl } from "@/lib/notify";
 import { serviceClient, supabaseConfigured } from "@/lib/supabase";
 import type { ContactMethod } from "@/lib/types";
@@ -15,7 +17,10 @@ const allowedFiles = ["application/pdf", "image/jpeg", "image/png", "image/webp"
  * and again by the database. It never charges money or reserves stock.
  */
 export async function submitQuoteRequest(form: FormData): Promise<SubmitResult> {
-  if (!supabaseConfigured) return { ok: false, error: "ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล (ตั้งค่า .env.local)" };
+  // Replies in the customer's language; the staff notification stays in Thai.
+  const lang = text(form, "lang") ?? "th";
+  const msg = getDictionary(isLocale(lang) ? lang : "th").submit;
+  if (!supabaseConfigured) return { ok: false, error: msg.notConnected };
 
   let items: { sku: string; qty: number; note?: string }[];
   try {
@@ -27,11 +32,11 @@ export async function submitQuoteRequest(form: FormData): Promise<SubmitResult> 
       note: typeof l.note === "string" && l.note.trim() !== "" ? l.note.trim() : undefined,
     }));
   } catch {
-    return { ok: false, error: "รายการสินค้าไม่ถูกต้อง กรุณาโหลดหน้าใหม่" };
+    return { ok: false, error: msg.badItems };
   }
 
   const attachment = file(form, "attachment");
-  const fileError = attachmentError(attachment, allowedFiles);
+  const fileError = attachmentError(attachment, allowedFiles, msg);
   if (fileError) return { ok: false, error: fileError };
 
   const { data, error } = await serviceClient().rpc("submit_quote_request", {
@@ -57,7 +62,7 @@ export async function submitQuoteRequest(form: FormData): Promise<SubmitResult> 
       items,
     },
   });
-  if (error) return { ok: false, error: dbErrorMessage(error) };
+  if (error) return { ok: false, error: dbErrorMessage(error, msg) };
 
   const { id, reference } = data as { id: string; reference: string };
   const attached = attachment ? await attachFile("quote-attachments", reference, attachment) : true;

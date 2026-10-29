@@ -6,10 +6,14 @@ import { createBrowserSupabase } from "@/lib/supabase/browser";
 export function GoogleSignInButton({
   next = "/account",
   label = "เข้าสู่ระบบด้วย Google",
+  busyLabel = "กำลังเปิด Google…",
+  errorLabel = "เข้าสู่ระบบไม่สำเร็จ",
   className = "",
 }: {
   next?: string;
   label?: string;
+  busyLabel?: string;
+  errorLabel?: string;
   className?: string;
 }) {
   const [busy, setBusy] = useState(false);
@@ -27,7 +31,7 @@ export function GoogleSignInButton({
       });
       if (authError) setError(authError.message);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "เข้าสู่ระบบไม่สำเร็จ");
+      setError(e instanceof Error ? e.message : errorLabel);
       setBusy(false);
     }
   };
@@ -41,7 +45,7 @@ export function GoogleSignInButton({
         className={`inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-white px-5 text-[15px] font-semibold text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)] ring-1 ring-[#dadce0] transition hover:bg-[#f8f9fa] disabled:opacity-60 ${className}`}
       >
         <GoogleMark />
-        {busy ? "กำลังเปิด Google…" : label}
+        {busy ? busyLabel : label}
       </button>
       {error && <p className="text-sm text-brand">{error}</p>}
     </div>

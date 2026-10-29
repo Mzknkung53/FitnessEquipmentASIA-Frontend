@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { createStaffProduct, getNextProductCode } from "@/app/staff/actions";
+import { useStaffI18n } from "@/app/staff/staff-i18n";
 import { Icon } from "@/components/icons";
+import { fmt, localePath } from "@/lib/i18n/config";
 import { categoryPrefix } from "@/lib/product-codes";
 import type { Category } from "@/lib/types";
 
@@ -21,14 +23,10 @@ const defaultCategories: { id: string; nameTh: string; nameEn: string }[] = [
   { id: "flooring", nameTh: "พื้นยางและชั้นวาง", nameEn: "Flooring & storage" },
 ];
 
-const angleSlots = [
-  { key: "image_front", label: "รูปหลัก *", hint: "มุมหน้า แสดงเป็นรูปแรก" },
-  { key: "image_side", label: "มุมข้าง", hint: "ไม่บังคับ" },
-  { key: "image_back", label: "มุมหลัง", hint: "ไม่บังคับ" },
-  { key: "image_detail", label: "รายละเอียด", hint: "เช่น แผงควบคุม" },
-] as const;
+/** Photo slots in upload order; labels come from t.form.angles. */
+const angleKeys = ["image_front", "image_side", "image_back", "image_detail"] as const;
 
-type AngleKey = (typeof angleSlots)[number]["key"];
+type AngleKey = (typeof angleKeys)[number];
 
 type AngleDraft = {
   file: File;
@@ -38,6 +36,8 @@ type AngleDraft = {
 };
 
 export function StaffProductForm({ categories }: { categories: Category[] }) {
+  const { lang, t } = useStaffI18n();
+  const f = t.form;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ slug: string; name: string; published: boolean } | null>(null);
@@ -67,18 +67,18 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
     if (!file) return;
     setError(null);
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError(`รองรับเฉพาะรูป JPG / PNG / WebP (${file.name})`);
+      setError(fmt(f.fileType, { file: file.name }));
       return;
     }
     if (file.size > 40 * 1024 * 1024) {
-      setError(`ไฟล์รูปใหญ่เกิน 40 MB (${file.name})`);
+      setError(fmt(f.fileTooBig, { file: file.name }));
       return;
     }
     setPreparing((prev) => ({ ...prev, [key]: true }));
     try {
       const shrunk = await shrinkImage(file);
       if (shrunk.file.size > 10 * 1024 * 1024) {
-        setError(`ย่อรูปแล้วยังเกิน 10 MB (${file.name})`);
+        setError(fmt(f.stillTooBig, { file: file.name }));
         return;
       }
       setAngles((prev) => {
@@ -90,7 +90,7 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
         };
       });
     } catch {
-      setError(`อ่านไฟล์รูปไม่สำเร็จ (${file.name})`);
+      setError(fmt(f.readFailed, { file: file.name }));
     } finally {
       setPreparing((prev) => ({ ...prev, [key]: false }));
     }
@@ -119,16 +119,16 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
     e.preventDefault();
     if (busyPhotos) return;
     if (!angles.image_front) {
-      setError("ใส่รูปหลัก (มุมหน้า) อย่างน้อย 1 รูป");
+      setError(f.needFront);
       return;
     }
     const form = new FormData(e.currentTarget);
     const meta: Record<string, { width: number; height: number }> = {};
-    for (const slot of angleSlots) {
-      const draft = angles[slot.key];
+    for (const key of angleKeys) {
+      const draft = angles[key];
       if (!draft) continue;
-      form.set(slot.key, draft.file, draft.file.name);
-      meta[slot.key] = { width: draft.width, height: draft.height };
+      form.set(key, draft.file, draft.file.name);
+      meta[key] = { width: draft.width, height: draft.height };
     }
     form.set("image_meta", JSON.stringify(meta));
     const name = String(form.get("name_th") ?? "");
@@ -148,23 +148,23 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
     return (
       <div role="status" className="flash-in flex flex-col gap-4 rounded-2xl border border-[#1f3a28] bg-[#101c14] p-6">
         <span className="flex items-center gap-2 font-display text-2xl font-bold text-[#6cc28d]">
-          <Icon name="check" /> บันทึกแล้ว
+          <Icon name="check" /> {f.saved}
         </span>
         <p>
-          &ldquo;{saved.name}&rdquo; รหัส <span className="font-mono">{saved.slug.toUpperCase()}</span>
-          {saved.published ? " แสดงบนหน้าเว็บแล้ว" : " เก็บเป็นแบบร่าง ยังไม่แสดงบนหน้าเว็บ"}
+          {fmt(f.savedCode, { name: saved.name, code: saved.slug.toUpperCase() })}
+          {saved.published ? f.savedPublished : f.savedDraft}
         </p>
         <div className="flex flex-wrap gap-3">
           <button type="button" onClick={startOver} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand px-5 font-semibold text-white hover:bg-brand-dark">
-            <Icon name="plus" size={16} /> เพิ่มสินค้าอีกชิ้น
+            <Icon name="plus" size={16} /> {f.addAnother}
           </button>
           {saved.published && (
-            <a href={`/products/${saved.slug}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-lg border border-[#3d3934] px-5 font-semibold hover:border-white">
-              ดูหน้าสินค้า
+            <a href={localePath(lang, `/products/${saved.slug}`)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-lg border border-[#3d3934] px-5 font-semibold hover:border-white">
+              {f.viewProduct}
             </a>
           )}
           <Link href="/staff" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold text-muted-night hover:text-white">
-            กลับไปรายการสินค้า
+            {f.backToList}
           </Link>
         </div>
       </div>
@@ -173,18 +173,18 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
 
   return (
     <form key={formKey} onSubmit={onSubmit} className="flex flex-col gap-6">
-      <Step n={1} title="ข้อมูลสินค้า">
+      <Step n={1} title={f.step1}>
         <label className={labelCls}>
-          หมวดหมู่ *
+          {f.category}
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={input}>
             {merged.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.nameTh}
+                {lang === "th" ? c.nameTh : lang === "en" ? c.nameEn : (t.categories[c.id] ?? c.nameEn)}
               </option>
             ))}
           </select>
           <span className={hintCls}>
-            รหัสสินค้าที่จะได้: <span className="font-mono text-white">{nextCode.toUpperCase()}</span> (ระบบออกให้อัตโนมัติ)
+            {f.nextCode} <span className="font-mono text-white">{nextCode.toUpperCase()}</span> {f.autoCode}
           </span>
         </label>
         <input type="hidden" name="category_id" value={selected?.id ?? categoryId} />
@@ -192,61 +192,62 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
         <input type="hidden" name="category_name_en" value={selected?.nameEn ?? categoryId} />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={labelCls}>
-            ชื่อภาษาไทย *
-            <input name="name_th" required maxLength={160} placeholder="เช่น ลู่วิ่งไฟฟ้าเชิงพาณิชย์" className={input} />
+            {f.nameTh}
+            <input name="name_th" required maxLength={160} placeholder={f.nameThExample} className={input} />
           </label>
           <label className={labelCls}>
-            ชื่อภาษาอังกฤษ *
+            {f.nameEn}
             <input name="name_en" required maxLength={160} placeholder="e.g. Commercial Treadmill" className={input} />
           </label>
         </div>
         <label className={labelCls}>
-          คำอธิบายสั้น
-          <textarea name="summary" rows={2} maxLength={500} placeholder="1–2 ประโยค แสดงใต้ชื่อสินค้า" className={`${input} py-3`} />
+          {f.summary}
+          <textarea name="summary" rows={2} maxLength={500} placeholder={f.summaryPlaceholder} className={`${input} py-3`} />
         </label>
         <fieldset className="flex flex-col gap-2">
-          <legend className="pb-1.5 text-sm font-semibold text-[#d8d3cc]">เหมาะกับ</legend>
+          <legend className="pb-1.5 text-sm font-semibold text-[#d8d3cc]">{f.suitable}</legend>
           <div className="flex flex-wrap gap-2">
-            <Chip name="setting_commercial" label="ยิม / ฟิตเนส" defaultChecked />
-            <Chip name="setting_home" label="ใช้ที่บ้าน" />
+            <Chip name="setting_commercial" label={f.gym} defaultChecked />
+            <Chip name="setting_home" label={f.home} />
           </div>
         </fieldset>
       </Step>
 
-      <Step n={2} title="ราคาและสถานะ">
+      <Step n={2} title={f.step2}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={labelCls}>
-            ราคา (บาท)
-            <input name="price_thb" inputMode="decimal" placeholder="เช่น 49900" className={input} />
-            <span className={hintCls}>ไม่รวม VAT · เว้นว่างถ้าต้องให้ลูกค้าขอใบเสนอราคา</span>
+            {f.price}
+            <input name="price_thb" inputMode="decimal" placeholder={f.priceExample} className={input} />
+            <span className={hintCls}>{f.priceHint}</span>
           </label>
           <label className={labelCls}>
-            สถานะสินค้า
+            {f.stockStatus}
             <select name="stock_status" defaultValue="ready" className={input}>
-              <option value="ready">พร้อมส่ง</option>
-              <option value="preorder">พรีออเดอร์</option>
-              <option value="import">สั่งผลิต / นำเข้า</option>
-              <option value="out">สินค้าหมด</option>
+              <option value="ready">{f.stock.ready}</option>
+              <option value="preorder">{f.stock.preorder}</option>
+              <option value="import">{f.stock.import}</option>
+              <option value="out">{f.stock.out}</option>
             </select>
           </label>
         </div>
         <details className="group text-sm">
-          <summary className="cursor-pointer text-muted-night hover:text-white">ตัวเลือกเพิ่มเติม</summary>
+          <summary className="cursor-pointer text-muted-night hover:text-white">{f.more}</summary>
           <label className={`${labelCls} mt-3`}>
-            ชื่อรุ่น / สี
-            <input name="variant_label" defaultValue="มาตรฐาน" maxLength={80} className={input} />
-            <span className={hintCls}>แสดงเป็นตัวเลือกบนหน้าสินค้า เช่น &ldquo;สีดำ&rdquo; (ค่าเริ่มต้น: มาตรฐาน)</span>
+            {f.variant}
+            <input name="variant_label" defaultValue={f.variantDefault} maxLength={80} className={input} />
+            <span className={hintCls}>{f.variantHint}</span>
           </label>
         </details>
       </Step>
 
-      <Step n={3} title="รูปและวิดีโอ">
+      <Step n={3} title={f.step3}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {angleSlots.map((slot) => {
-            const draft = angles[slot.key];
-            const busy = preparing[slot.key];
+          {angleKeys.map((key) => {
+            const slot = f.angles[key];
+            const draft = angles[key];
+            const busy = preparing[key];
             return (
-              <div key={slot.key} className="flex flex-col gap-1.5">
+              <div key={key} className="flex flex-col gap-1.5">
                 <span className="text-sm font-semibold text-[#d8d3cc]">{slot.label}</span>
                 {draft ? (
                   <div className="relative">
@@ -254,8 +255,8 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
                     <img src={draft.preview} alt="" className="aspect-square w-full rounded-lg object-cover" />
                     <button
                       type="button"
-                      onClick={() => clearAngle(slot.key)}
-                      aria-label={`ลบ${slot.label}`}
+                      onClick={() => clearAngle(key)}
+                      aria-label={fmt(f.remove, { label: slot.label.replace(" *", "") })}
                       className="absolute top-1.5 right-1.5 grid size-8 place-items-center rounded-full bg-black/70 text-white hover:bg-black"
                     >
                       <Icon name="x" size={14} />
@@ -265,22 +266,22 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
                   <label className="grid aspect-square cursor-pointer place-items-center rounded-lg border border-dashed border-[#3d3934] p-2 text-center text-xs text-muted-night hover:border-brand hover:text-white">
                     <span className="flex flex-col items-center gap-1">
                       {busy ? (
-                        "กำลังย่อรูป…"
+                        f.shrinking
                       ) : (
                         <>
                           <Icon name="plus" size={18} />
-                          เลือกรูป
+                          {f.choose}
                         </>
                       )}
                     </span>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
-                      aria-label={`เลือกรูป ${slot.label.replace(" *", "")}`}
+                      aria-label={fmt(f.chooseFor, { label: slot.label.replace(" *", "") })}
                       className="sr-only"
                       disabled={busy}
                       onChange={(e) => {
-                        void setAngle(slot.key, e.target.files);
+                        void setAngle(key, e.target.files);
                         e.target.value = "";
                       }}
                     />
@@ -291,11 +292,11 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
             );
           })}
         </div>
-        <p className={hintCls}>JPG / PNG / WebP · ไฟล์ใหญ่จะถูกย่ออัตโนมัติ</p>
+        <p className={hintCls}>{f.formats}</p>
         <label className={labelCls}>
-          ลิงก์วิดีโอ
+          {f.video}
           <input name="video_url" type="url" placeholder="https://www.youtube.com/watch?v=..." className={input} />
-          <span className={hintCls}>ไม่บังคับ · YouTube หรือ Vimeo</span>
+          <span className={hintCls}>{f.videoHint}</span>
         </label>
       </Step>
 
@@ -307,7 +308,7 @@ export function StaffProductForm({ categories }: { categories: Category[] }) {
           </p>
         )}
         <button type="submit" disabled={pending || busyPhotos} className="min-h-12 rounded-lg bg-brand px-6 font-semibold text-white hover:bg-brand-dark disabled:opacity-60 sm:self-start">
-          {pending ? "กำลังบันทึก…" : busyPhotos ? "กำลังเตรียมรูป…" : "บันทึกสินค้า"}
+          {pending ? f.saving : busyPhotos ? f.preparing : f.save}
         </button>
       </div>
     </form>
@@ -337,14 +338,15 @@ function Chip({ name, label, defaultChecked = false }: { name: string; label: st
 }
 
 function PublishToggle() {
+  const { t } = useStaffI18n();
   const [on, setOn] = useState(true);
   return (
     <label className="flex cursor-pointer items-start gap-3">
       <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} className="mt-1 size-5 accent-brand" />
       <input type="hidden" name="status" value={on ? "published" : "draft"} />
       <span className="flex flex-col">
-        <span className="font-semibold">แสดงบนหน้าเว็บทันที</span>
-        <span className={hintCls}>{on ? "ลูกค้าจะเห็นสินค้านี้หลังกดบันทึก" : "เก็บเป็นแบบร่าง ลูกค้ายังไม่เห็น"}</span>
+        <span className="font-semibold">{t.form.publish}</span>
+        <span className={hintCls}>{on ? t.form.publishOn : t.form.publishOff}</span>
       </span>
     </label>
   );

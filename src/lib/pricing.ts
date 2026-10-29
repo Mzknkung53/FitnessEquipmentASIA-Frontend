@@ -23,9 +23,11 @@ export function productPrice(product: Product): { mode: PriceMode; amount: numbe
   return { mode: allSame ? "exact" : "from", amount: min };
 }
 
-export function priceLabel(mode: PriceMode, amount: number | null, currency: Currency = "THB"): string {
-  if (mode === "ask" || amount == null) return "สอบถามราคา";
-  return (mode === "from" ? "เริ่มต้น " : "") + formatMoney(amount, currency);
+/** Labels come from the dictionary (t.common): askPrice, and priceFrom with a {price} slot. */
+export function priceLabel(mode: PriceMode, amount: number | null, currency: Currency, labels: { askPrice: string; priceFrom: string }): string {
+  if (mode === "ask" || amount == null) return labels.askPrice;
+  const price = formatMoney(amount, currency);
+  return mode === "from" ? labels.priceFrom.replace("{price}", price) : price;
 }
 
 /** Best stock status across variants, used on listing cards. */
@@ -39,9 +41,10 @@ export function canBuy(variant: Variant): boolean {
   return checkoutEnabled && variant.priceThb != null && variant.status === "ready";
 }
 
-export const statusMeta: Record<StockStatus, { label: string; dot: string }> = {
-  ready: { label: "พร้อมส่ง", dot: "bg-ready" },
-  preorder: { label: "พรีออเดอร์", dot: "bg-preorder" },
-  import: { label: "สั่งผลิต/นำเข้า", dot: "bg-import" },
-  out: { label: "สินค้าหมด", dot: "bg-out" },
+/** Colour dot per stock status; the label is in the dictionary (t.status). */
+export const statusDot: Record<StockStatus, string> = {
+  ready: "bg-ready",
+  preorder: "bg-preorder",
+  import: "bg-import",
+  out: "bg-out",
 };

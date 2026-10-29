@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { setQuoteStatus } from "@/app/staff/quotes/actions";
 import type { QuoteStatus } from "@/app/staff/quotes/quote-meta";
+import { useStaffI18n } from "@/app/staff/staff-i18n";
 
 const primary = "inline-flex min-h-11 items-center rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
 const secondary = "inline-flex min-h-11 items-center rounded-lg border border-[#3d3934] px-4 text-sm font-semibold hover:border-white disabled:opacity-60";
@@ -10,6 +11,8 @@ const quiet = "inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-se
 
 /** Status buttons that make sense for the current status only. */
 export function QuoteActions({ quoteId, status }: { quoteId: string; status: QuoteStatus }) {
+  const { t } = useStaffI18n();
+  const a = t.actions;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [askReason, setAskReason] = useState(false);
@@ -34,22 +37,22 @@ export function QuoteActions({ quoteId, status }: { quoteId: string; status: Quo
         className="flex w-full flex-col gap-2 sm:w-auto"
       >
         <label className="flex flex-col gap-1.5 text-sm font-semibold">
-          ทำไมไม่สำเร็จ <span className="font-normal text-muted-night">(ไม่บังคับ ใช้ดูสถิติภายหลัง)</span>
+          {a.whyLost} <span className="font-normal text-muted-night">{a.whyLostHint}</span>
           <input
             autoFocus
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="เช่น ราคาสูงกว่าคู่แข่ง / ลูกค้าเลื่อนโครงการ"
+            placeholder={a.lostExample}
             maxLength={500}
             className="min-h-11 rounded-lg border border-[#3d3934] bg-[#151311] px-3 text-[15px] font-normal sm:w-80"
           />
         </label>
         <div className="flex gap-2">
           <button type="submit" disabled={pending} className={primary}>
-            ยืนยัน ไม่สำเร็จ
+            {a.confirmLost}
           </button>
           <button type="button" onClick={() => setAskReason(false)} className={quiet}>
-            ยกเลิก
+            {a.cancel}
           </button>
         </div>
         {error && <p role="alert" className="text-sm text-[#ff8a8f]">{error}</p>}
@@ -62,34 +65,34 @@ export function QuoteActions({ quoteId, status }: { quoteId: string; status: Quo
       <div className="flex flex-wrap gap-2">
         {status === "new" && (
           <button type="button" disabled={pending} onClick={() => go("reviewing")} className={primary}>
-            รับเรื่องนี้
+            {a.takeOn}
           </button>
         )}
         {status === "quoted" && (
           <button type="button" disabled={pending} onClick={() => go("won")} className={primary}>
-            ปิดการขายได้
+            {a.won}
           </button>
         )}
         {(status === "new" || status === "reviewing" || status === "quoted") && (
           <>
             <button type="button" disabled={pending} onClick={() => setAskReason(true)} className={secondary}>
-              ไม่สำเร็จ
+              {a.lost}
             </button>
             <button
               type="button"
               disabled={pending}
               onClick={() => {
-                if (window.confirm("ยกเลิกใบขอราคานี้? (เปิดใหม่ได้ภายหลัง)")) go("cancelled");
+                if (window.confirm(a.cancelConfirm)) go("cancelled");
               }}
               className={quiet}
             >
-              ยกเลิกคำขอ
+              {a.cancelRequest}
             </button>
           </>
         )}
         {(status === "won" || status === "lost" || status === "cancelled") && (
           <button type="button" disabled={pending} onClick={() => go("reviewing")} className={secondary}>
-            เปิดใหม่
+            {a.reopen}
           </button>
         )}
       </div>
